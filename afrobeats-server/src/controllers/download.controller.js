@@ -16,6 +16,8 @@ export async function getDownloadController(req, res) {
     const download = await getAuthorizedDownload({
       grantId,
       customerEmail: email,
+      ipAddress: req.ip,
+  userAgent: req.get('user-agent'),
     })
 
     return res.status(200).json({
@@ -40,6 +42,7 @@ export async function getDownloadController(req, res) {
 
     if (
       error.message === 'Download grant is not active' ||
+      error.message === 'Download grant has expired' ||
       error.message === 'Order is not paid' ||
       error.message === 'Download is not authorized' ||
       error.message === 'Asset is not downloadable'

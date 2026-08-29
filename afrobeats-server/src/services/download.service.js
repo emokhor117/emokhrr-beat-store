@@ -2,10 +2,15 @@ import { db } from '../prisma/db.js'
 import {
   createSignedDownloadUrl,
 } from './storage.service.js'
+import { Temporal } from 'temporal-polyfill'
+
+
 
 export async function getAuthorizedDownload({
   grantId,
   customerEmail,
+  ipAddress,
+  userAgent,
 }) {
   const grant = await db.orm.public.DownloadGrant
     .where({
@@ -20,6 +25,16 @@ export async function getAuthorizedDownload({
   if (grant.status !== 'ACTIVE') {
     throw new Error('Download grant is not active')
   }
+
+  if (
+  grant.expiresAt &&
+  Temporal.Instant.compare(
+    grant.expiresAt,
+    Temporal.Now.instant()
+  ) <= 0
+) {
+  throw new Error('Download grant has expired')
+}
 
   const order = await db.orm.public.Order
     .where({
@@ -66,6 +81,12 @@ export async function getAuthorizedDownload({
     key: asset.storageKey,
     expiresIn: 300,
   })
+
+  await db.orm.public.DownloadEvent.create({
+  downloadGrantId: grant.id,
+  ipAddress: ipAddress || null,
+  userAgent: userAgent || null,
+})
 
   return {
     grantId: grant.id,

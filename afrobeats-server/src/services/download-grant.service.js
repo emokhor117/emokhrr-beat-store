@@ -1,3 +1,4 @@
+import { Temporal } from 'temporal-polyfill'
 import { db } from '../prisma/db.js'
 
 export async function createDownloadGrantsForOrder({
@@ -69,20 +70,43 @@ export async function createDownloadGrantsForOrder({
           })
           .first()
 
-      if (existingGrant) {
-        createdGrants.push(existingGrant)
-        continue
-      }
+     if (existingGrant) {
+  if (!existingGrant.expiresAt) {
+    const expiresAt = Temporal.Now.instant().add({
+      hours: 168,
+    })
 
-      const grant =
-        await orm.public.DownloadGrant.create({
-          orderId,
-          orderItemId: orderItem.id,
-          assetId: latestAsset.id,
-          status: 'ACTIVE',
+    const updatedGrant =
+      await orm.public.DownloadGrant
+        .where({
+          id: existingGrant.id,
+        })
+        .update({
+          expiresAt,
         })
 
-      createdGrants.push(grant)
+    createdGrants.push(updatedGrant)
+  } else {
+    createdGrants.push(existingGrant)
+  }
+
+  continue
+}
+
+const expiresAt = Temporal.Now.instant().add({
+  hours: 168,
+})
+
+const grant =
+  await orm.public.DownloadGrant.create({
+    orderId,
+    orderItemId: orderItem.id,
+    assetId: latestAsset.id,
+    status: 'ACTIVE',
+    expiresAt,
+  })
+
+createdGrants.push(grant)
     }
   }
 
