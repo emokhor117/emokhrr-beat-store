@@ -1,0 +1,356 @@
+// use prisma-next
+
+enum BeatStatus {
+  @@type("pg/text@1")
+
+  DRAFT
+  ACTIVE
+  EXCLUSIVE_SOLD
+  ARCHIVED
+}
+
+enum AssetType {
+  @@type("pg/text@1")
+
+  ARTWORK
+  PREVIEW_MASTERED_TAGGED
+  MP3_UNMASTERED
+  WAV_UNMASTERED
+  STEMS_ZIP
+}
+
+enum OrderStatus {
+  @@type("pg/text@1")
+
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  CHARGEBACK
+}
+
+enum PaymentStatus {
+  @@type("pg/text@1")
+
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  CHARGEBACK
+}
+
+enum DownloadStatus {
+  @@type("pg/text@1")
+
+  ACTIVE
+  REVOKED
+}
+
+model Beat {
+  id          Uuid       @id @default(uuid())
+  publicId    String     @unique
+  title       String
+  slug        String     @unique
+  producer    String
+  genre       String?
+  mood        String?
+  bpm         Int?
+  musicalKey  String?
+  durationSec Int?
+  status      BeatStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+
+  assets     BeatAsset[]
+  licenses   BeatLicense[]
+  orderItems OrderItem[]
+
+  @@index([status])
+}
+
+model BeatAsset {
+  id     Uuid @id @default(uuid())
+  beatId Uuid
+
+  type       AssetType
+  storageKey String
+  version    Int @default(1)
+
+  mimeType String?
+  fileSize BigInt?
+  checksum String?
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  beat Beat @relation(
+    fields: [beatId],
+    references: [id]
+  )
+
+  downloadGrants DownloadGrant[]
+
+  @@unique([beatId, type, version])
+  @@index([beatId, active])
+}
+
+model LicenseType {
+  id          Uuid   @id @default(uuid())
+  code        String @unique
+  name        String
+  description String?
+
+  terms Json
+
+  active    Boolean @default(true)
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+
+  beatLicenses BeatLicense[]
+  assetGrants  LicenseAssetGrant[]
+  orderItems   OrderItem[]
+}
+
+model BeatLicense {
+  id            Uuid @id @default(uuid())
+  beatId        Uuid
+  licenseTypeId Uuid
+
+  priceKobo Int
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+
+  beat Beat @relation(
+    fields: [beatId],
+    references: [id]
+  )
+
+  licenseType LicenseType @relation(
+    fields: [licenseTypeId],
+    references: [id]
+  )
+
+  @@unique([beatId, licenseTypeId])
+  @@index([beatId])
+  @@index([licenseTypeId])
+}
+
+model LicenseAssetGrant {
+  id            Uuid @id @default(uuid())
+  licenseTypeId Uuid
+
+  assetType AssetType
+
+  licenseType LicenseType @relation(
+    fields: [licenseTypeId],
+    references: [id]
+  )
+
+  @@unique([licenseTypeId, assetType])
+}
+
+model Customer {
+  id    Uuid   @id @default(uuid())
+  email String @unique
+  name  String?
+
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+
+  orders Order[]
+}
+
+model Order {
+  id          Uuid   @id @default(uuid())
+  orderNumber String @unique
+
+  customerId Uuid?
+
+  customerEmail String
+  customerName  String?
+
+  currency String @default("NGN")
+
+  subtotalKobo Int
+  totalKobo    Int
+
+  status OrderStatus @default(PENDING)
+
+  termsAcceptedAt DateTime?
+  paidAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+
+  customer Customer? @relation(
+    fields: [customerId],
+    references: [id]
+  )
+
+  items          OrderItem[]
+  payments       Payment[]
+  downloadGrants DownloadGrant[]
+
+  @@index([customerEmail])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id      Uuid @id @default(uuid())
+  orderId Uuid
+  beatId  Uuid
+
+  licenseTypeId Uuid
+
+  beatPublicIdSnapshot  String
+  beatTitleSnapshot     String
+  licenseCodeSnapshot   String
+  licenseNameSnapshot   String
+  priceKoboSnapshot     Int
+  termsSnapshot         Json
+
+  createdAt DateTime @default(now())
+
+  order Order @relation(
+    fields: [orderId],
+    references: [id]
+  )
+
+  beat Beat @relation(
+    fields: [beatId],
+    references: [id]
+  )
+
+  licenseType LicenseType @relation(
+    fields: [licenseTypeId],
+    references: [id]
+  )
+
+  downloadGrants DownloadGrant[]
+
+  @@index([orderId])
+  @@index([beatId])
+  @@index([licenseTypeId])
+}
+
+model Payment {
+  id      Uuid @id @default(uuid())
+  orderId Uuid
+
+  provider          String @default("PAYSTACK")
+  providerReference String @unique
+
+  expectedAmountKobo Int
+  paidAmountKobo     Int?
+
+  currency String @default("NGN")
+
+  status PaymentStatus @default(PENDING)
+
+  providerPayload Json?
+
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+
+  order Order @relation(
+    fields: [orderId],
+    references: [id]
+  )
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model DownloadGrant {
+  id Uuid @id @default(uuid())
+
+  orderId     Uuid
+  orderItemId Uuid
+  assetId     Uuid
+
+  status DownloadStatus @default(ACTIVE)
+
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+
+  order Order @relation(
+    fields: [orderId],
+    references: [id]
+  )
+
+  orderItem OrderItem @relation(
+    fields: [orderItemId],
+    references: [id]
+  )
+
+  asset BeatAsset @relation(
+    fields: [assetId],
+    references: [id]
+  )
+
+  downloads DownloadEvent[]
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([assetId])
+  @@index([status])
+}
+
+model DownloadEvent {
+  id              Uuid @id @default(uuid())
+  downloadGrantId Uuid
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  downloadGrant DownloadGrant @relation(
+    fields: [downloadGrantId],
+    references: [id]
+  )
+
+  @@index([downloadGrantId])
+  @@index([createdAt])
+}
+
+model WebhookEvent {
+  id Uuid @id @default(uuid())
+
+  provider  String
+  eventId   String
+  eventType String
+
+  payload Json
+
+  processed   Boolean @default(false)
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([processed])
+}
+
+model AuditLog {
+  id Uuid @id @default(uuid())
+
+  action     String
+  entityType String
+  entityId   String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
