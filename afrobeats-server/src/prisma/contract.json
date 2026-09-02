@@ -1214,6 +1214,13 @@
           },
           "Order": {
             "fields": {
+              "accessTokenHash": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -1376,6 +1383,9 @@
             },
             "storage": {
               "fields": {
+                "accessTokenHash": {
+                  "column": "accessTokenHash"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -2698,6 +2708,11 @@
                 }
               ],
               "columns": {
+                "accessTokenHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "default": {
@@ -2843,6 +2858,11 @@
                 {
                   "columns": [
                     "orderNumber"
+                  ]
+                },
+                {
+                  "columns": [
+                    "accessTokenHash"
                   ]
                 }
               ]
@@ -3259,7 +3279,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "712f324717aeb8f3e7acb7819e262188543677effecd70659853ebe7a08a1f0a"
+    "storageHash": "7cb638705e5260c86a10caee9f5ab27d6690ff1a08db13abd5a952c9be7d78f8"
   },
   "execution": {
     "executionHash": "f3725a3d18948f09e59e4cba27a91c902ee3cacdd60665e0ed419f8a4054c3de",

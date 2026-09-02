@@ -1,5 +1,18 @@
 import { randomUUID } from 'node:crypto'
+import crypto from 'crypto'
+
 import { db } from '../prisma/db.js'
+
+function generateOrderAccessToken() {
+  return crypto.randomBytes(32).toString('hex')
+}
+
+function hashOrderAccessToken(token) {
+  return crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex')
+}
 
 function generateOrderNumber() {
   const date = new Date()
@@ -97,12 +110,21 @@ export async function createPendingOrder({
 
   const orderNumber = generateOrderNumber()
 
+  // Generate a unique secret token for THIS order.
+  const accessToken = generateOrderAccessToken()
+
+  // Store only the hash in the database.
+  const accessTokenHash =
+    hashOrderAccessToken(accessToken)
+
   // Create the parent order first.
   const order = await db.orm.public.Order.create({
     orderNumber,
 
     customerEmail: email,
     customerName: name,
+
+    accessTokenHash,
 
     currency: 'NGN',
 
@@ -138,6 +160,10 @@ export async function createPendingOrder({
     email: order.customerEmail,
     currency: order.currency,
     status: order.status,
+
+    // Returned to the customer once.
+    // The raw value is NOT stored in PostgreSQL.
+    accessToken,
 
     items: calculatedOrder.items.map((item) => ({
       beatId: item.beatPublicId,

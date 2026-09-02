@@ -1,14 +1,14 @@
 import { Router } from 'express'
 
 import {
-  getDownloadController,
+  getOrderDownloadsController,
 } from '../controllers/download.controller.js'
 
 const router = Router()
 
 router.get(
-  '/downloads/:grantId',
-  getDownloadController
+  '/orders/:orderNumber/downloads',
+  getOrderDownloadsController
 )
 
 export default router

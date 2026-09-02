@@ -1,98 +1,150 @@
+import crypto from 'crypto'
+
 import { db } from '../prisma/db.js'
+import { Temporal } from 'temporal-polyfill'
+
 import {
   createSignedDownloadUrl,
 } from './storage.service.js'
-import { Temporal } from 'temporal-polyfill'
 
+function hashOrderAccessToken(token) {
+  return crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex')
+}
 
-
-export async function getAuthorizedDownload({
-  grantId,
-  customerEmail,
+export async function getAuthorizedOrderDownloads({
+  orderNumber,
+  accessToken,
   ipAddress,
   userAgent,
 }) {
-  const grant = await db.orm.public.DownloadGrant
-    .where({
-      id: grantId,
-    })
-    .first()
-
-  if (!grant) {
-    throw new Error('Download grant not found')
+  if (!orderNumber || !accessToken) {
+    throw new Error('Order number and access token are required')
   }
 
-  if (grant.status !== 'ACTIVE') {
-    throw new Error('Download grant is not active')
-  }
-
-  if (
-  grant.expiresAt &&
-  Temporal.Instant.compare(
-    grant.expiresAt,
-    Temporal.Now.instant()
-  ) <= 0
-) {
-  throw new Error('Download grant has expired')
-}
+  const accessTokenHash =
+    hashOrderAccessToken(accessToken)
 
   const order = await db.orm.public.Order
     .where({
-      id: grant.orderId,
+      orderNumber,
+      accessTokenHash,
     })
     .first()
 
   if (!order) {
-    throw new Error('Order not found')
+    throw new Error('Download access is not authorized')
   }
 
   if (order.status !== 'PAID') {
     throw new Error('Order is not paid')
   }
 
-  if (
-    order.customerEmail.toLowerCase() !==
-    customerEmail.toLowerCase()
-  ) {
-    throw new Error('Download is not authorized')
-  }
-
-  const asset = await db.orm.public.BeatAsset
+  const grants = await db.orm.public.DownloadGrant
     .where({
-      id: grant.assetId,
+      orderId: order.id,
     })
-    .first()
+    .all()
 
-  if (!asset) {
-    throw new Error('Asset not found')
+  if (grants.length === 0) {
+    throw new Error('No download grants found')
   }
 
-  const downloadableTypes = [
-    'MP3_UNMASTERED',
-    'WAV_UNMASTERED',
-    'STEMS_ZIP',
-  ]
+  const downloads = []
 
-  if (!downloadableTypes.includes(asset.type)) {
-    throw new Error('Asset is not downloadable')
+  for (const grant of grants) {
+    if (grant.status !== 'ACTIVE') {
+      continue
+    }
+
+    if (
+      grant.expiresAt &&
+      Temporal.Instant.compare(
+        grant.expiresAt,
+        Temporal.Now.instant()
+      ) <= 0
+    ) {
+      continue
+    }
+
+    const asset = await db.orm.public.BeatAsset
+      .where({
+        id: grant.assetId,
+      })
+      .first()
+
+    if (!asset) {
+      continue
+    }
+
+    const downloadableTypes = [
+      'MP3_UNMASTERED',
+      'WAV_UNMASTERED',
+      'STEMS_ZIP',
+    ]
+
+    if (!downloadableTypes.includes(asset.type)) {
+      continue
+    }
+
+    const orderItem = await db.orm.public.OrderItem
+      .where({
+        id: grant.orderItemId,
+      })
+      .first()
+
+    if (!orderItem) {
+      continue
+    }
+
+    const signedUrl = await createSignedDownloadUrl({
+      key: asset.storageKey,
+      expiresIn: 300,
+    })
+
+    await db.orm.public.DownloadEvent.create({
+      downloadGrantId: grant.id,
+      ipAddress: ipAddress || null,
+      userAgent: userAgent || null,
+    })
+
+    downloads.push({
+      grantId: grant.id,
+
+      beatId:
+        orderItem.beatPublicIdSnapshot,
+
+      beatTitle:
+        orderItem.beatTitleSnapshot,
+
+      licenseCode:
+        orderItem.licenseCodeSnapshot,
+
+      licenseName:
+        orderItem.licenseNameSnapshot,
+
+      assetType: asset.type,
+      mimeType: asset.mimeType,
+
+      signedUrl,
+      expiresIn: 300,
+
+      grantExpiresAt:
+        grant.expiresAt ?? null,
+    })
   }
 
-  const signedUrl = await createSignedDownloadUrl({
-    key: asset.storageKey,
-    expiresIn: 300,
-  })
-
-  await db.orm.public.DownloadEvent.create({
-  downloadGrantId: grant.id,
-  ipAddress: ipAddress || null,
-  userAgent: userAgent || null,
-})
+  if (downloads.length === 0) {
+    throw new Error(
+      'No active downloads are available'
+    )
+  }
 
   return {
-    grantId: grant.id,
-    assetType: asset.type,
-    mimeType: asset.mimeType,
-    signedUrl,
-    expiresIn: 300,
+    orderNumber: order.orderNumber,
+    status: order.status,
+    downloads,
   }
 }

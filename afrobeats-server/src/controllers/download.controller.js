@@ -1,51 +1,69 @@
 import {
-  getAuthorizedDownload,
+  getAuthorizedOrderDownloads,
 } from '../services/download.service.js'
 
-export async function getDownloadController(req, res) {
+export async function getOrderDownloadsController(
+  req,
+  res
+) {
   try {
-    const { grantId } = req.params
-    const { email } = req.query
+    const { orderNumber } = req.params
 
-    if (!email) {
+    const accessToken =
+      req.get('x-order-access-token')
+
+    if (!accessToken) {
       return res.status(400).json({
-        message: 'email is required',
+        message:
+          'x-order-access-token header is required',
       })
     }
 
-    const download = await getAuthorizedDownload({
-      grantId,
-      customerEmail: email,
-      ipAddress: req.ip,
-  userAgent: req.get('user-agent'),
-    })
+    const result =
+      await getAuthorizedOrderDownloads({
+        orderNumber,
+        accessToken,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      })
 
     return res.status(200).json({
-      message: 'Download authorized',
-      download,
+      success: true,
+      ...result,
     })
   } catch (error) {
-    console.error('Download authorization failed:', {
-      name: error.name,
-      message: error.message,
-    })
+    console.error(
+      'Order download authorization failed:',
+      {
+        name: error.name,
+        message: error.message,
+      }
+    )
 
     if (
-      error.message === 'Download grant not found' ||
-      error.message === 'Order not found' ||
-      error.message === 'Asset not found'
+      error.message ===
+        'Order number and access token are required'
     ) {
-      return res.status(404).json({
+      return res.status(400).json({
         message: error.message,
       })
     }
 
     if (
-      error.message === 'Download grant is not active' ||
-      error.message === 'Download grant has expired' ||
+      error.message ===
+        'Download access is not authorized'
+    ) {
+      return res.status(403).json({
+        message: error.message,
+      })
+    }
+
+    if (
       error.message === 'Order is not paid' ||
-      error.message === 'Download is not authorized' ||
-      error.message === 'Asset is not downloadable'
+      error.message ===
+        'No download grants found' ||
+      error.message ===
+        'No active downloads are available'
     ) {
       return res.status(403).json({
         message: error.message,
@@ -53,7 +71,8 @@ export async function getDownloadController(req, res) {
     }
 
     return res.status(500).json({
-      message: 'Failed to authorize download',
+      message:
+        'Failed to authorize order downloads',
     })
   }
 }

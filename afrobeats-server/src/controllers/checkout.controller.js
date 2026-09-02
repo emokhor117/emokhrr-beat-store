@@ -31,6 +31,8 @@ export async function createCheckout(req, res) {
         status: order.status,
         currency: order.currency,
 
+        accessToken: order.accessToken,
+
         items: order.items,
 
         totalKobo: order.totalKobo,

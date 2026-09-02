@@ -176,6 +176,8 @@ model Order {
   customerEmail String
   customerName  String?
 
+  accessTokenHash String? @unique
+
   currency String @default("NGN")
 
   subtotalKobo Int
