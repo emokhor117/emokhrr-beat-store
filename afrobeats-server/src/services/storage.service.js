@@ -6,8 +6,14 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3'
 
-import { Upload } from '@aws-sdk/lib-storage'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import {
+  Upload,
+} from '@aws-sdk/lib-storage'
+
+import {
+  getSignedUrl,
+} from '@aws-sdk/s3-request-presigner'
+
 const {
   R2_ACCOUNT_ID,
   R2_ACCESS_KEY_ID,
@@ -30,7 +36,12 @@ if (
 
 export const r2 = new S3Client({
   region: 'auto',
-  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+
+  endpoint:
+    `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+
+  forcePathStyle: true,
+
   credentials: {
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
@@ -102,7 +113,10 @@ export async function uploadLargeObject({
     },
 
     queueSize: 4,
-    partSize: 10 * 1024 * 1024,
+
+    partSize:
+      10 * 1024 * 1024,
+
     leavePartsOnError: false,
   })
 
@@ -136,18 +150,17 @@ export async function deleteObject({
       Key: key,
     })
   )
-
-  
 }
 
 export async function createSignedDownloadUrl({
   key,
   expiresIn = 300,
 }) {
-  const command = new GetObjectCommand({
-    Bucket: R2_BUCKETS.PRIVATE,
-    Key: key,
-  })
+  const command =
+    new GetObjectCommand({
+      Bucket: R2_BUCKETS.PRIVATE,
+      Key: key,
+    })
 
   return getSignedUrl(
     r2,

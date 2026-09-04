@@ -300,6 +300,8 @@ model DownloadGrant {
 
   downloads DownloadEvent[]
 
+  @@unique([orderId, orderItemId, assetId])
+
   @@index([orderId])
   @@index([orderItemId])
   @@index([assetId])

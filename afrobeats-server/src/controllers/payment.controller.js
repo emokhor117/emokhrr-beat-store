@@ -143,13 +143,18 @@ export async function handlePaystackWebhook(
   }
 
   try {
-    await processPaystackWebhook(req.body)
+    const result =
+  await processPaystackWebhook(req.body)
 
-    console.log(
-  'Processing Paystack reference:',
-  reference
+console.log(
+  'Paystack webhook processed:',
+  {
+    reference:
+      req.body?.data?.reference,
+    alreadyProcessed:
+      result.alreadyProcessed ?? false,
+  }
 )
-
     return res.sendStatus(200)
   } catch (error) {
     console.error(

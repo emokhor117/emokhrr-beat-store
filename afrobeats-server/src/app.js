@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit'
 import paymentRoutes from './routes/payment.routes.js'
 import beatAssetRoutes from './routes/beat-asset.routes.js'
 import downloadRoutes from './routes/download.routes.js'
+import adminAuthRoutes from './routes/admin-auth.routes.js'
 
 const app = express()
 
@@ -49,6 +50,8 @@ app.use(
   beatAssetRoutes
 )
 app.use('/api', downloadRoutes)
+app.use('/api', adminAuthRoutes)
+app.use('/api', beatAssetRoutes)
 // Health endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({

@@ -200,6 +200,16 @@ async function verifyPaystackTransaction(reference) {
 // --------------------------------------------------
 // PROCESS VERIFIED PAYSTACK WEBHOOK
 // --------------------------------------------------
+function getWebhookEventId(event) {
+  const eventType = event?.event
+  const reference = event?.data?.reference
+
+  if (!eventType || !reference) {
+    throw new Error('INVALID_WEBHOOK_DATA')
+  }
+
+  return `${eventType}:${reference}`
+}
 
 export async function processPaystackWebhook(event) {
   const webhookTransaction = event?.data
@@ -211,26 +221,78 @@ export async function processPaystackWebhook(event) {
   const reference =
     webhookTransaction.reference
 
-  // 1. Find our payment record
-  const payment = await db.orm.public.Payment
+
+  const eventId =
+  getWebhookEventId(event)
+
+const existingEvent =
+  await db.orm.public.WebhookEvent
     .where({
-      providerReference: reference,
+      provider: 'PAYSTACK',
+      eventId,
     })
     .first()
+
+if (existingEvent?.processed) {
+  return {
+    success: true,
+    alreadyProcessed: true,
+    reference,
+  }
+}
+
+if (!existingEvent) {
+  await db.orm.public.WebhookEvent.create({
+    provider: 'PAYSTACK',
+    eventId,
+    eventType: event.event,
+    payload: event,
+    processed: false,
+  })
+}
+
+  const payment =
+    await db.orm.public.Payment
+      .where({
+        providerReference: reference,
+      })
+      .first()
 
   if (!payment) {
     throw new Error('PAYMENT_NOT_FOUND')
   }
 
-  // Idempotency:
-  // Don't process a successful payment twice.
-  if (payment.status === 'SUCCESS') {
-    return {
-      alreadyProcessed: true,
-    }
+if (payment.status === 'SUCCESS') {
+  const eventRecord =
+    await db.orm.public.WebhookEvent
+      .where({
+        provider: 'PAYSTACK',
+        eventId,
+      })
+      .first()
+
+  if (
+    eventRecord &&
+    !eventRecord.processed
+  ) {
+    await db.orm.public.WebhookEvent
+      .where({
+        id: eventRecord.id,
+      })
+      .update({
+        processed: true,
+        processedAt:
+          Temporal.Now.instant(),
+      })
   }
 
-  // 2. Independently verify with Paystack
+  return {
+    success: true,
+    alreadyProcessed: true,
+    reference,
+  }
+}
+
   const verified =
     await verifyPaystackTransaction(reference)
 
@@ -256,19 +318,20 @@ export async function processPaystackWebhook(event) {
   }
 
   if (
-    verified.currency !== payment.currency
+    verified.currency !==
+    payment.currency
   ) {
     throw new Error(
       'CURRENCY_MISMATCH'
     )
   }
 
-  // 3. Load corresponding order
-  const order = await db.orm.public.Order
-    .where({
-      id: payment.orderId,
-    })
-    .first()
+  const order =
+    await db.orm.public.Order
+      .where({
+        id: payment.orderId,
+      })
+      .first()
 
   if (!order) {
     throw new Error('ORDER_NOT_FOUND')
@@ -283,35 +346,98 @@ export async function processPaystackWebhook(event) {
     )
   }
 
-  // --------------------------------
-// 4. FULFILL PAYMENT ATOMICALLY
-// --------------------------------
+  if (
+    order.status === 'PAID' &&
+    payment.status !== 'SUCCESS'
+  ) {
+    throw new Error(
+      'INCONSISTENT_PAYMENT_STATE'
+    )
+  }
 
-await db.transaction(async (tx) => {
-  await tx.orm.public.Payment
-    .where({ id: payment.id })
-    .update({
-      status: 'SUCCESS',
-      paidAmountKobo: Number(verified.amount),
-      providerPayload: verified,
+  await db.transaction(async (tx) => {
+    const currentPayment =
+      await tx.orm.public.Payment
+        .where({
+          id: payment.id,
+        })
+        .first()
+
+    if (!currentPayment) {
+      throw new Error(
+        'PAYMENT_NOT_FOUND'
+      )
+    }
+
+    if (
+      currentPayment.status === 'SUCCESS'
+    ) {
+      return
+    }
+
+    const currentOrder =
+      await tx.orm.public.Order
+        .where({
+          id: order.id,
+        })
+        .first()
+
+    if (!currentOrder) {
+      throw new Error(
+        'ORDER_NOT_FOUND'
+      )
+    }
+
+    if (
+      currentOrder.status === 'PAID'
+    ) {
+      return
+    }
+
+    await tx.orm.public.Payment
+      .where({
+        id: payment.id,
+      })
+      .update({
+        status: 'SUCCESS',
+        paidAmountKobo:
+          Number(verified.amount),
+        providerPayload: verified,
+      })
+
+    await tx.orm.public.Order
+      .where({
+        id: order.id,
+      })
+      .update({
+        status: 'PAID',
+        paidAt:
+          Temporal.Now.instant(),
+      })
+
+    await createDownloadGrantsForOrder({
+      orderId: order.id,
+      orm: tx.orm,
     })
-
-  await tx.orm.public.Order
-    .where({ id: order.id })
-    .update({
-      status: 'PAID',
-      paidAt: Temporal.Now.instant(),
-    })
-
-  await createDownloadGrantsForOrder({
-    orderId: order.id,
-    orm: tx.orm,
   })
-})
+
+
+  await tx.orm.public.WebhookEvent
+  .where({
+    provider: 'PAYSTACK',
+    eventId,
+  })
+  .update({
+    processed: true,
+    processedAt:
+      Temporal.Now.instant(),
+  })
 
   return {
     success: true,
-    orderNumber: order.orderNumber,
+    alreadyProcessed: false,
+    orderNumber:
+      order.orderNumber,
     reference,
   }
 }

@@ -2549,7 +2549,15 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "orderId",
+                    "orderItemId",
+                    "assetId"
+                  ]
+                }
+              ]
             },
             "licenseAssetGrant": {
               "checks": [
@@ -3279,7 +3287,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "7cb638705e5260c86a10caee9f5ab27d6690ff1a08db13abd5a952c9be7d78f8"
+    "storageHash": "b03cfc82a3572c09677ea26ee8a6f0a67e5ac6987d447c1bd967b9f5e705bb08"
   },
   "execution": {
     "executionHash": "f3725a3d18948f09e59e4cba27a91c902ee3cacdd60665e0ed419f8a4054c3de",

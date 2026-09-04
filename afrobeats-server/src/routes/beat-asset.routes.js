@@ -1,17 +1,22 @@
 import { Router } from 'express'
-
 import {
-  uploadBeatAssetController,
-} from '../controllers/beat-asset.controller.js'
+  requireAdmin,
+} from '../middleware/admin-auth.middleware.js'
 
 import {
   uploadBeatAsset,
 } from '../middleware/upload.middleware.js'
 
+import {
+  uploadBeatAssetController,
+} from '../controllers/beat-asset.controller.js'
+
+
 const router = Router()
 
 router.post(
-  '/beats/:publicId/assets',
+  '/admin/beats/:beatId/assets',
+  requireAdmin,
   uploadBeatAsset,
   uploadBeatAssetController
 )
