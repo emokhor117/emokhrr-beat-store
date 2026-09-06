@@ -55,6 +55,14 @@ export async function initializePaystackPayment(orderNumber) {
   const reference =
     generatePaymentReference(order.orderNumber)
 
+  const frontendUrl =
+  process.env.FRONTEND_URL ||
+  'http://localhost:5173'
+
+const callbackUrl =
+  `${frontendUrl}/payment-success?order=${encodeURIComponent(
+    order.orderNumber
+  )}`
   // 4. Initialize transaction with Paystack
   const response = await fetch(
     PAYSTACK_INITIALIZE_URL,
@@ -355,45 +363,37 @@ if (payment.status === 'SUCCESS') {
     )
   }
 
-  await db.transaction(async (tx) => {
-    const currentPayment =
-      await tx.orm.public.Payment
-        .where({
-          id: payment.id,
-        })
-        .first()
+await db.transaction(async (tx) => {
+  const currentPayment =
+    await tx.orm.public.Payment
+      .where({
+        id: payment.id,
+      })
+      .first()
 
-    if (!currentPayment) {
-      throw new Error(
-        'PAYMENT_NOT_FOUND'
-      )
-    }
+  if (!currentPayment) {
+    throw new Error(
+      'PAYMENT_NOT_FOUND'
+    )
+  }
 
-    if (
-      currentPayment.status === 'SUCCESS'
-    ) {
-      return
-    }
+  const currentOrder =
+    await tx.orm.public.Order
+      .where({
+        id: order.id,
+      })
+      .first()
 
-    const currentOrder =
-      await tx.orm.public.Order
-        .where({
-          id: order.id,
-        })
-        .first()
+  if (!currentOrder) {
+    throw new Error(
+      'ORDER_NOT_FOUND'
+    )
+  }
 
-    if (!currentOrder) {
-      throw new Error(
-        'ORDER_NOT_FOUND'
-      )
-    }
-
-    if (
-      currentOrder.status === 'PAID'
-    ) {
-      return
-    }
-
+  if (
+    currentPayment.status !== 'SUCCESS' &&
+    currentOrder.status !== 'PAID'
+  ) {
     await tx.orm.public.Payment
       .where({
         id: payment.id,
@@ -419,19 +419,9 @@ if (payment.status === 'SUCCESS') {
       orderId: order.id,
       orm: tx.orm,
     })
-  })
+  }
 
-
-  await tx.orm.public.WebhookEvent
-  .where({
-    provider: 'PAYSTACK',
-    eventId,
-  })
-  .update({
-    processed: true,
-    processedAt:
-      Temporal.Now.instant(),
-  })
+})
 
   return {
     success: true,

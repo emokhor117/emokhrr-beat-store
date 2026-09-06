@@ -113,6 +113,10 @@ export async function uploadBeatAsset({
       )
     }
 
+    /*
+     * Read all existing versions so
+     * we can calculate the next one.
+     */
     const existingAssets =
       await db.orm.public.BeatAsset
         .where({
@@ -152,6 +156,12 @@ export async function uploadBeatAsset({
     let uploadedToR2 = false
 
     try {
+      /*
+       * Upload the new object first.
+       *
+       * We do NOT deactivate the old
+       * asset before this succeeds.
+       */
       if (
         file.size >=
         LARGE_FILE_THRESHOLD
@@ -185,40 +195,106 @@ export async function uploadBeatAsset({
 
       uploadedToR2 = true
 
+      /*
+       * Database changes are atomic:
+       *
+       * 1. Deactivate old versions.
+       * 2. Create new active version.
+       *
+       * If creation fails, the
+       * deactivations roll back.
+       */
       const asset =
-        await db.orm.public.BeatAsset
-          .create({
-            beatId: beat.id,
-            type: assetType,
-            storageKey: key,
-            version,
-            mimeType:
-              file.mimetype,
-            fileSize:
-              BigInt(file.size),
-            checksum,
-            active: true,
-          })
+        await db.transaction(
+          async (tx) => {
+            const oldAssets =
+              await tx.orm.public.BeatAsset
+                .where({
+                  beatId: beat.id,
+                  type: assetType,
+                  active: true,
+                })
+                .all()
+
+            for (
+              const oldAsset
+              of oldAssets
+            ) {
+              await tx.orm.public.BeatAsset
+                .where({
+                  id: oldAsset.id,
+                })
+                .update({
+                  active: false,
+                })
+            }
+
+            const newAsset =
+              await tx.orm.public.BeatAsset
+                .create({
+                  beatId:
+                    beat.id,
+
+                  type:
+                    assetType,
+
+                  storageKey:
+                    key,
+
+                  version,
+
+                  mimeType:
+                    file.mimetype,
+
+                  fileSize:
+                    BigInt(
+                      file.size
+                    ),
+
+                  checksum,
+
+                  active: true,
+                })
+
+            return newAsset
+          }
+        )
 
       return {
-        id: asset.id,
-        beatId: beat.id,
+        id:
+          asset.id,
+
+        beatId:
+          beat.id,
+
         beatPublicId:
           beat.publicId,
-        type: asset.type,
+
+        type:
+          asset.type,
+
         version:
           asset.version,
+
         storageKey:
           asset.storageKey,
+
         mimeType:
           asset.mimeType,
+
         fileSize:
           asset.fileSize
             ?.toString(),
+
         checksum:
           asset.checksum,
       }
     } catch (error) {
+      /*
+       * If R2 succeeded but the DB
+       * operation failed, remove the
+       * orphaned R2 object.
+       */
       if (uploadedToR2) {
         try {
           await deleteObject({
@@ -242,6 +318,10 @@ export async function uploadBeatAsset({
       throw error
     }
   } finally {
+    /*
+     * Always remove Multer's
+     * temporary local file.
+     */
     await removeTemporaryFile(
       file.path
     )

@@ -1,301 +1,604 @@
-import { useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+
+import {
+  ArrowRight,
+  Headphones,
+  SlidersHorizontal,
+  Sparkles,
+} from 'lucide-react'
 
 import Navbar from './components/Navbar'
-import FilterSidebar from './components/FilterSidebar'
 import BeatGrid from './components/BeatGrid'
+import FilterSidebar from './components/FilterSidebar'
 import BottomPlayer from './components/BottomPlayer'
 import LicenseModal from './components/LicenseModal'
 import CartDrawer from './components/CartDrawer'
+import CheckoutModal from './components/CheckoutModal'
 
-import { beats } from './data/beats'
-import { licenses } from './data/licenses'
 
-export default function App() {
-  // AUDIO
-  const [currentBeat, setCurrentBeat] = useState(null)
-  const [isPlaying, setIsPlaying] = useState(false)
 
-  // CATALOGUE
-  const [search, setSearch] = useState('')
-  const [genre, setGenre] = useState('All')
+function App() {
+  const [beats, setBeats] = useState([])
+  const [beatsLoading, setBeatsLoading] =
+    useState(true)
+  const [beatsError, setBeatsError] =
+    useState('')
 
-  // LICENSE SELECTION
-  const [selectedBeat, setSelectedBeat] = useState(null)
-  const [selectedLicense, setSelectedLicense] = useState(null)
+  const [currentBeat, setCurrentBeat] =
+    useState(null)
 
-  // CART
-  const [cart, setCart] = useState([])
-  const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isPlaying, setIsPlaying] =
+    useState(false)
 
+  const [search, setSearch] =
+    useState('')
+
+  const [genre, setGenre] =
+    useState('All')
+
+  const [selectedBeat, setSelectedBeat] =
+    useState(null)
+
+  const [selectedLicense, setSelectedLicense] =
+    useState(null)
+
+  const [cart, setCart] =
+    useState([])
+
+  const [isCartOpen, setIsCartOpen] =
+    useState(false)
+
+  const [isCheckoutOpen, setIsCheckoutOpen] =
+    useState(false)
+
+  const [checkoutEmail, setCheckoutEmail] =
+    useState('')
+
+  const [isCheckoutLoading, setIsCheckoutLoading] =
+    useState(false)
+
+  const homeRef = useRef(null)
+  const beatsRef = useRef(null)
+  const servicesRef = useRef(null)
   const audioRef = useRef(null)
 
-  // ----------------------------
-  // FILTERING
-  // ----------------------------
+  // -------------------------
+  // FETCH REAL BEATS
+  // -------------------------
 
-  const filteredBeats = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase()
+  useEffect(() => {
+    async function fetchBeats() {
+      try {
+        setBeatsLoading(true)
+        setBeatsError('')
 
-    return beats.filter((beat) => {
-      const matchesGenre =
-        genre === 'All' || beat.genre === genre
+        const response = await fetch(
+          'http://localhost:5000/api/beats'
+        )
 
-      const searchableText = [
-        beat.title,
-        beat.genre,
-        beat.mood,
-        beat.producer,
-        beat.key,
-        beat.bpm,
-      ]
-        .join(' ')
-        .toLowerCase()
+        const data = await response.json()
 
-      const matchesSearch =
-        normalizedSearch === '' ||
-        searchableText.includes(normalizedSearch)
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              'Failed to load beats'
+          )
+        }
 
-      return matchesGenre && matchesSearch
+        setBeats(data.beats || [])
+      } catch (error) {
+        console.error(
+          'Failed to fetch beats:',
+          error
+        )
+
+        setBeatsError(
+          error.message ||
+            'Unable to load beats'
+        )
+      } finally {
+        setBeatsLoading(false)
+      }
+    }
+
+    fetchBeats()
+  }, [])
+
+  // -------------------------
+  // FILTERS
+  // -------------------------
+
+  const genres = useMemo(() => {
+    const uniqueGenres =
+      beats
+        .map((beat) => beat.genre)
+        .filter(Boolean)
+
+    return [
+      'All',
+      ...new Set(uniqueGenres),
+    ]
+  }, [beats])
+
+  const filteredBeats =
+    useMemo(() => {
+      return beats.filter((beat) => {
+        const matchesSearch =
+          beat.title
+            .toLowerCase()
+            .includes(
+              search.toLowerCase()
+            ) ||
+          beat.producer
+            .toLowerCase()
+            .includes(
+              search.toLowerCase()
+            ) ||
+          beat.genre
+            ?.toLowerCase()
+            .includes(
+              search.toLowerCase()
+            )
+
+        const matchesGenre =
+          genre === 'All' ||
+          beat.genre === genre
+
+        return (
+          matchesSearch &&
+          matchesGenre
+        )
+      })
+    }, [
+      beats,
+      search,
+      genre,
+    ])
+
+  // -------------------------
+  // NAVIGATION
+  // -------------------------
+
+  function scrollToSection(ref) {
+    ref.current?.scrollIntoView({
+      behavior: 'smooth',
     })
-  }, [search, genre])
+  }
 
-  // ----------------------------
-  // AUDIO PLAYER
-  // ----------------------------
+  // -------------------------
+  // PLAYER
+  // -------------------------
 
-  const handleTogglePlay = async (beat) => {
-    const audio = audioRef.current
-
-    if (!audio) {
+  function handleTogglePlay(beat) {
+    if (!beat?.previewUrl) {
       return
     }
 
-    if (currentBeat?.id === beat.id) {
+    if (
+      currentBeat?.id === beat.id
+    ) {
       if (isPlaying) {
-        audio.pause()
+        audioRef.current?.pause()
         setIsPlaying(false)
       } else {
-        try {
-          await audio.play()
-          setIsPlaying(true)
-        } catch (error) {
-          console.error('Could not play audio:', error)
-          setIsPlaying(false)
-        }
+        audioRef.current
+          ?.play()
+          .catch(console.error)
+
+        setIsPlaying(true)
       }
 
       return
     }
 
-    audio.pause()
-
-    audio.src = beat.previewUrl
-    audio.load()
-
     setCurrentBeat(beat)
+    setIsPlaying(true)
 
-    try {
-      await audio.play()
-      setIsPlaying(true)
-    } catch (error) {
-      console.error('Could not play audio:', error)
-      setIsPlaying(false)
-    }
+    setTimeout(() => {
+      if (!audioRef.current) {
+        return
+      }
+
+      audioRef.current.src =
+        beat.previewUrl
+
+      audioRef.current
+        .play()
+        .catch((error) => {
+          console.error(
+            'Audio playback failed:',
+            error
+          )
+
+          setIsPlaying(false)
+        })
+    }, 0)
   }
 
-  // ----------------------------
-  // LICENSE SELECTION
-  // ----------------------------
+  // -------------------------
+  // LICENSE MODAL
+  // -------------------------
 
-  const handleSelectBeat = (beat) => {
+  function handleSelectBeat(beat) {
     setSelectedBeat(beat)
     setSelectedLicense(null)
   }
 
-  const handleCloseLicenseModal = () => {
+  function handleCloseLicenseModal() {
     setSelectedBeat(null)
     setSelectedLicense(null)
   }
 
-  // ----------------------------
-  // CART
-  // ----------------------------
-
-  const handleAddToCart = () => {
-    if (!selectedBeat || !selectedLicense) {
-      return
-    }
-
-    /*
-      One beat should only appear once in the cart.
-
-      If the customer selects the same beat again with a
-      different license, we update its license instead of
-      creating a duplicate.
-    */
-
+  function handleAddToCart(
+    beat,
+    license
+  ) {
     setCart((currentCart) => {
-      const existingItem = currentCart.find(
-        (item) => item.beat.id === selectedBeat.id
-      )
-
-      if (existingItem) {
-        return currentCart.map((item) =>
-          item.beat.id === selectedBeat.id
-            ? {
-                ...item,
-                license: selectedLicense,
-              }
-            : item
+      const existingIndex =
+        currentCart.findIndex(
+          (item) =>
+            item.beat.id === beat.id
         )
+
+      const newItem = {
+        beat,
+        license,
       }
 
-      return [
-        ...currentCart,
-        {
-          cartId: `${selectedBeat.id}-${selectedLicense.id}`,
-          beat: selectedBeat,
-          license: selectedLicense,
-        },
-      ]
-    })
-
-    setSelectedBeat(null)
-    setSelectedLicense(null)
-
-    setIsCartOpen(true)
-  }
-
-  const handleRemoveFromCart = (cartId) => {
-    setCart((currentCart) =>
-      currentCart.filter((item) => item.cartId !== cartId)
-    )
-  }
-
-  // ----------------------------
-  // CHECKOUT
-  // ----------------------------
-
-  const handleCheckout = () => {
-    /*
-      IMPORTANT:
-
-      We are NOT sending prices to Paystack here.
-
-      Later, React will send only something like:
-
-      {
-        items: [
-          {
-            beatId: "beat_001",
-            licenseId: "premium"
-          }
+      if (existingIndex === -1) {
+        return [
+          ...currentCart,
+          newItem,
         ]
       }
 
-      Our backend will look up the real prices.
-    */
+      const updatedCart = [
+        ...currentCart,
+      ]
+
+      updatedCart[
+        existingIndex
+      ] = newItem
+
+      return updatedCart
+    })
+
+    handleCloseLicenseModal()
+    setIsCartOpen(true)
+  }
+
+  function handleRemoveFromCart(
+    beatId
+  ) {
+    setCart((currentCart) =>
+      currentCart.filter(
+        (item) =>
+          item.beat.id !== beatId
+      )
+    )
+  }
+
+  // -------------------------
+  // CHECKOUT
+  // -------------------------
+
+  function handleCheckout() {
+    setIsCartOpen(false)
+    setIsCheckoutOpen(true)
+  }
+
+  async function handleContinueToPayment() {
+    if (isCheckoutLoading) {
+      return
+    }
 
     const checkoutPayload = {
+      email: checkoutEmail.trim(),
+
       items: cart.map((item) => ({
         beatId: item.beat.id,
-        licenseId: item.license.id,
+        licenseId:
+          item.license.id,
       })),
     }
 
-    console.log('Checkout payload:', checkoutPayload)
+    try {
+      setIsCheckoutLoading(true)
+
+      const checkoutResponse =
+        await fetch(
+          'http://localhost:5000/api/checkout',
+          {
+            method: 'POST',
+
+            headers: {
+              'Content-Type':
+                'application/json',
+            },
+
+            body: JSON.stringify(
+              checkoutPayload
+            ),
+          }
+        )
+
+      const checkoutData =
+        await checkoutResponse.json()
+
+      if (!checkoutResponse.ok) {
+        throw new Error(
+          checkoutData?.message ||
+            'Checkout failed'
+        )
+      }
+
+      const orderNumber =
+        checkoutData.order
+          .orderNumber
+
+      // Keep this secret.
+      // Do not place it in a URL.
+      if (
+        checkoutData.order
+          .accessToken
+      ) {
+        sessionStorage.setItem(
+          `order_access_${orderNumber}`,
+          checkoutData.order
+            .accessToken
+        )
+      }
+
+      const paymentResponse =
+        await fetch(
+          'http://localhost:5000/api/payments/paystack/initialize',
+          {
+            method: 'POST',
+
+            headers: {
+              'Content-Type':
+                'application/json',
+            },
+
+            body: JSON.stringify({
+              orderNumber,
+            }),
+          }
+        )
+
+      const paymentData =
+        await paymentResponse.json()
+
+      if (!paymentResponse.ok) {
+        throw new Error(
+          paymentData?.message ||
+            'Could not initialize payment'
+        )
+      }
+
+      const authorizationUrl =
+  paymentData?.payment?.authorizationUrl
+
+if (!authorizationUrl) {
+  throw new Error(
+    'Paystack authorization URL was not returned'
+  )
+}
+
+window.location.href =
+  authorizationUrl
+
+      /*
+        Do not redirect yet until
+        we confirm the exact field
+        your backend returns.
+
+        It may be:
+        paymentData.authorization_url
+
+        or:
+        paymentData.data.authorization_url
+
+        We'll inspect the response
+        first.
+      */
+    } catch (error) {
+      console.error(
+        'Checkout error:',
+        error
+      )
+
+      alert(
+        error.message ||
+          'Something went wrong'
+      )
+    } finally {
+      setIsCheckoutLoading(false)
+    }
   }
 
-  // ----------------------------
-  // UI
-  // ----------------------------
-
   return (
-    <div className="min-h-screen bg-[#ededf0] pb-20">
+    <div className="min-h-screen bg-[#09090b] text-white">
       <Navbar
-        cartCount={cart.length}
-        onOpenCart={() => setIsCartOpen(true)}
-      />
+  cartCount={cart.length}
+  onOpenCart={() =>
+    setIsCartOpen(true)
+  }
+  onHome={() =>
+    scrollToSection(homeRef)
+  }
+  onBeats={() =>
+    scrollToSection(beatsRef)
+  }
+  onServices={() =>
+    scrollToSection(servicesRef)
+  }
+/>
 
-      <div className="mx-auto flex max-w-[1500px] flex-col bg-[#f9f9fa] lg:min-h-[calc(100vh-64px)] lg:flex-row">
-        <FilterSidebar
-          search={search}
-          setSearch={setSearch}
-          genre={genre}
-          setGenre={setGenre}
-        />
+      {/* HERO */}
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-600">
-                Beat Store
-              </p>
+      <section
+        ref={homeRef}
+        className="scroll-mt-24"
+      >
+        {/* keep your existing hero JSX here */}
+      </section>
 
-              <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">
-                Browse beats
-              </h1>
+      {/* BEAT STORE */}
 
-              <p className="mt-1 max-w-xl text-sm text-slate-500">
-                Listen to previews and choose the license that fits your
-                release.
-              </p>
-            </div>
-
-            <p className="text-xs font-medium text-slate-500">
-              {filteredBeats.length}{' '}
-              {filteredBeats.length === 1 ? 'beat' : 'beats'}
+      <section
+        ref={beatsRef}
+        className="scroll-mt-24"
+      >
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mb-10">
+            <p className="mb-2 text-sm uppercase tracking-[0.2em] text-zinc-500">
+              Catalogue
             </p>
+
+            <h2 className="text-3xl font-semibold sm:text-4xl">
+              Beat Store
+            </h2>
           </div>
 
-          <BeatGrid
-            beats={filteredBeats}
-            currentBeat={currentBeat}
-            isPlaying={isPlaying}
-            onTogglePlay={handleTogglePlay}
-            onSelect={handleSelectBeat}
-          />
-        </main>
-      </div>
+          {beatsLoading ? (
+            <div className="py-20 text-center text-zinc-400">
+              Loading beats...
+            </div>
+          ) : beatsError ? (
+            <div className="py-20 text-center">
+              <p className="text-zinc-400">
+                {beatsError}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
+              <FilterSidebar
+                search={search}
+                setSearch={setSearch}
+                genre={genre}
+                setGenre={setGenre}
+                genres={genres}
+              />
 
-      {/* AUDIO ENGINE */}
-      <audio
-        ref={audioRef}
-        preload="none"
-        onEnded={() => setIsPlaying(false)}
-        onPause={() => {
-          if (!audioRef.current?.ended) {
+              <BeatGrid
+                beats={filteredBeats}
+                currentBeat={
+                  currentBeat
+                }
+                isPlaying={
+                  isPlaying
+                }
+                onTogglePlay={
+                  handleTogglePlay
+                }
+                onSelect={
+                  handleSelectBeat
+                }
+              />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* SERVICES */}
+
+      <section
+        ref={servicesRef}
+        className="scroll-mt-24"
+      >
+        {/* keep your existing services JSX here */}
+      </section>
+
+      {currentBeat?.previewUrl && (
+        <audio
+          ref={audioRef}
+          src={
+            currentBeat.previewUrl
+          }
+          onEnded={() =>
             setIsPlaying(false)
+          }
+        />
+      )}
+
+      <BottomPlayer
+        beat={currentBeat}
+        isPlaying={isPlaying}
+        onTogglePlay={() => {
+          if (currentBeat) {
+            handleTogglePlay(
+              currentBeat
+            )
+          }
+        }}
+        onBuy={() => {
+          if (currentBeat) {
+            handleSelectBeat(
+              currentBeat
+            )
           }
         }}
       />
 
-      {/* PERSISTENT AUDIO PLAYER */}
-      <BottomPlayer
-        beat={currentBeat}
-        isPlaying={isPlaying}
-        onTogglePlay={handleTogglePlay}
-        onSelect={handleSelectBeat}
-      />
-
-      {/* LICENSE SELECTOR */}
       <LicenseModal
-        beat={selectedBeat}
-        licenses={licenses}
-        selectedLicense={selectedLicense}
-        setSelectedLicense={setSelectedLicense}
-        onClose={handleCloseLicenseModal}
-        onContinue={handleAddToCart}
-      />
-
-      {/* SHOPPING CART */}
+  beat={selectedBeat}
+  licenses={selectedBeat?.licenses || []}
+  selectedLicense={selectedLicense}
+  setSelectedLicense={setSelectedLicense}
+  onClose={handleCloseLicenseModal}
+  onContinue={() => {
+    if (
+      selectedBeat &&
+      selectedLicense
+    ) {
+      handleAddToCart(
+        selectedBeat,
+        selectedLicense
+      )
+    }
+  }}
+/>
       <CartDrawer
         isOpen={isCartOpen}
         cart={cart}
-        onClose={() => setIsCartOpen(false)}
-        onRemove={handleRemoveFromCart}
-        onCheckout={handleCheckout}
+        onClose={() =>
+          setIsCartOpen(false)
+        }
+        onRemove={
+          handleRemoveFromCart
+        }
+        onCheckout={
+          handleCheckout
+        }
+      />
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        cart={cart}
+        email={checkoutEmail}
+        setEmail={
+          setCheckoutEmail
+        }
+        onClose={() =>
+          setIsCheckoutOpen(
+            false
+          )
+        }
+        onContinue={
+          handleContinueToPayment
+        }
+        isLoading={
+          isCheckoutLoading
+        }
       />
     </div>
   )
 }
+
+export default App

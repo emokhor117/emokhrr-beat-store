@@ -1,15 +1,17 @@
-import { randomUUID } from 'node:crypto'
-import crypto from 'crypto'
+import {
+  randomUUID,
+  randomBytes,
+  createHash,
+} from 'node:crypto'
 
 import { db } from '../prisma/db.js'
 
 function generateOrderAccessToken() {
-  return crypto.randomBytes(32).toString('hex')
+  return randomBytes(32).toString('hex')
 }
 
 function hashOrderAccessToken(token) {
-  return crypto
-    .createHash('sha256')
+  return createHash('sha256')
     .update(token)
     .digest('hex')
 }
@@ -28,7 +30,10 @@ function generateOrderNumber() {
   return `EMK-${date}-${randomPart}`
 }
 
-export async function calculateOrder(items) {
+async function calculateOrderWithOrm(
+  items,
+  orm
+) {
   const orderItems = []
   const seenBeats = new Set()
 
@@ -40,40 +45,45 @@ export async function calculateOrder(items) {
     seenBeats.add(item.beatId)
 
     // 1. Find the beat.
-    const beat = await db.orm.public.Beat
-      .where({
-        publicId: item.beatId,
-        status: 'ACTIVE',
-      })
-      .first()
+    const beat =
+      await orm.public.Beat
+        .where({
+          publicId: item.beatId,
+          status: 'ACTIVE',
+        })
+        .first()
 
     if (!beat) {
       throw new Error('INVALID_BEAT')
     }
 
     // 2. Find the requested license.
-    const license = await db.orm.public.LicenseType
-      .where({
-        code: item.licenseId,
-        active: true,
-      })
-      .first()
+    const license =
+      await orm.public.LicenseType
+        .where({
+          code: item.licenseId,
+          active: true,
+        })
+        .first()
 
     if (!license) {
       throw new Error('INVALID_LICENSE')
     }
 
     // 3. Find the authoritative price.
-    const beatLicense = await db.orm.public.BeatLicense
-      .where({
-        beatId: beat.id,
-        licenseTypeId: license.id,
-        active: true,
-      })
-      .first()
+    const beatLicense =
+      await orm.public.BeatLicense
+        .where({
+          beatId: beat.id,
+          licenseTypeId: license.id,
+          active: true,
+        })
+        .first()
 
     if (!beatLicense) {
-      throw new Error('LICENSE_NOT_AVAILABLE')
+      throw new Error(
+        'LICENSE_NOT_AVAILABLE'
+      )
     }
 
     orderItems.push({
@@ -90,10 +100,12 @@ export async function calculateOrder(items) {
     })
   }
 
-  const totalKobo = orderItems.reduce(
-    (total, item) => total + item.priceKobo,
-    0
-  )
+  const totalKobo =
+    orderItems.reduce(
+      (total, item) =>
+        total + item.priceKobo,
+      0
+    )
 
   return {
     items: orderItems,
@@ -101,80 +113,152 @@ export async function calculateOrder(items) {
   }
 }
 
+export async function calculateOrder(items) {
+  return calculateOrderWithOrm(
+    items,
+    db.orm
+  )
+}
+
 export async function createPendingOrder({
   email,
   name = null,
   items,
 }) {
-  const calculatedOrder = await calculateOrder(items)
+  const orderNumber =
+    generateOrderNumber()
 
-  const orderNumber = generateOrderNumber()
+  // Generate a unique secret token
+  // specifically for this order.
+  const accessToken =
+    generateOrderAccessToken()
 
-  // Generate a unique secret token for THIS order.
-  const accessToken = generateOrderAccessToken()
-
-  // Store only the hash in the database.
+  // Only the hash is stored.
   const accessTokenHash =
     hashOrderAccessToken(accessToken)
 
-  // Create the parent order first.
-  const order = await db.orm.public.Order.create({
-    orderNumber,
+  const result =
+    await db.transaction(
+      async (tx) => {
+        /*
+         * We calculate the order INSIDE
+         * the transaction as well.
+         *
+         * This means pricing/licensing reads
+         * and order creation are part of the
+         * same checkout operation.
+         */
+        const calculatedOrder =
+          await calculateOrderWithOrm(
+            items,
+            tx.orm
+          )
 
-    customerEmail: email,
-    customerName: name,
+        // Create parent order.
+        const order =
+          await tx.orm.public.Order.create({
+            orderNumber,
 
-    accessTokenHash,
+            customerEmail: email,
+            customerName: name,
 
-    currency: 'NGN',
+            accessTokenHash,
 
-    subtotalKobo: calculatedOrder.totalKobo,
-    totalKobo: calculatedOrder.totalKobo,
+            currency: 'NGN',
 
-    status: 'PENDING',
-  })
+            subtotalKobo:
+              calculatedOrder.totalKobo,
 
-  // Snapshot every purchased item.
-  for (const item of calculatedOrder.items) {
-    await db.orm.public.OrderItem.create({
-      orderId: order.id,
+            totalKobo:
+              calculatedOrder.totalKobo,
 
-      beatId: item.beatDatabaseId,
-      licenseTypeId: item.licenseTypeId,
+            status: 'PENDING',
+          })
 
-      beatPublicIdSnapshot: item.beatPublicId,
-      beatTitleSnapshot: item.beatTitle,
+        // Snapshot every purchased item.
+        for (
+          const item
+          of calculatedOrder.items
+        ) {
+          await tx.orm.public.OrderItem.create({
+            orderId: order.id,
 
-      licenseCodeSnapshot: item.licenseCode,
-      licenseNameSnapshot: item.licenseName,
+            beatId:
+              item.beatDatabaseId,
 
-      priceKoboSnapshot: item.priceKobo,
+            licenseTypeId:
+              item.licenseTypeId,
 
-      termsSnapshot: item.licenseTerms,
-    })
-  }
+            beatPublicIdSnapshot:
+              item.beatPublicId,
+
+            beatTitleSnapshot:
+              item.beatTitle,
+
+            licenseCodeSnapshot:
+              item.licenseCode,
+
+            licenseNameSnapshot:
+              item.licenseName,
+
+            priceKoboSnapshot:
+              item.priceKobo,
+
+            termsSnapshot:
+              item.licenseTerms,
+          })
+        }
+
+        return {
+          order,
+          calculatedOrder,
+        }
+      }
+    )
 
   return {
-    id: order.id,
-    orderNumber: order.orderNumber,
-    email: order.customerEmail,
-    currency: order.currency,
-    status: order.status,
+    id: result.order.id,
 
-    // Returned to the customer once.
-    // The raw value is NOT stored in PostgreSQL.
+    orderNumber:
+      result.order.orderNumber,
+
+    email:
+      result.order.customerEmail,
+
+    currency:
+      result.order.currency,
+
+    status:
+      result.order.status,
+
+    /*
+     * Returned once to the customer.
+     * Raw token is never stored
+     * in PostgreSQL.
+     */
     accessToken,
 
-    items: calculatedOrder.items.map((item) => ({
-      beatId: item.beatPublicId,
-      beatTitle: item.beatTitle,
+    items:
+      result.calculatedOrder.items.map(
+        (item) => ({
+          beatId:
+            item.beatPublicId,
 
-      licenseId: item.licenseCode,
-      licenseName: item.licenseName,
+          beatTitle:
+            item.beatTitle,
 
-      priceKobo: item.priceKobo,
-    })),
+          licenseId:
+            item.licenseCode,
 
-    totalKobo: calculatedOrder.totalKobo,
+          licenseName:
+            item.licenseName,
+
+          priceKobo:
+            item.priceKobo,
+        })
+      ),
+
+    totalKobo:
+      result.calculatedOrder.totalKobo,
   }
 }

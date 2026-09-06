@@ -1,10 +1,7 @@
 import {
   Pause,
   Play,
-  ShoppingCart,
-  SkipBack,
-  SkipForward,
-  Volume2,
+  ShoppingBag,
 } from 'lucide-react'
 
 const bars = [
@@ -26,78 +23,98 @@ export default function BottomPlayer({
   }
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-50 border-t-2 border-purple-600 bg-[#080809] text-white">
-      <div className="flex h-20 items-center">
-        <div className="flex h-full w-60 shrink-0 items-center gap-3 border-r border-white/10 px-4">
+    <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-[#0c0c0f]/95 text-white shadow-[0_-12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+      <div className="mx-auto flex h-[82px] max-w-[1600px] items-center px-3 sm:px-5 lg:px-8">
+        {/* CURRENT BEAT */}
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:max-w-[280px]">
           <img
             src={beat.image}
-            alt=""
-            className="h-14 w-14 object-cover"
+            alt={beat.title}
+            className="h-12 w-12 shrink-0 rounded-lg object-cover sm:h-14 sm:w-14"
           />
 
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold">
+            <p className="truncate text-xs font-semibold text-white sm:text-sm">
               {beat.title}
             </p>
 
-            <p className="truncate text-[10px] uppercase tracking-wide text-slate-400">
+            <p className="mt-1 truncate text-[10px] font-medium text-white/35 sm:text-[11px]">
               {beat.producer}
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3 px-5">
-          <SkipBack
-            size={19}
-            className="cursor-pointer text-slate-400 hover:text-white"
-          />
-
+        {/* PLAYBACK */}
+        <div className="flex shrink-0 items-center px-3 sm:px-6">
           <button
             type="button"
-            onClick={() => onTogglePlay(beat)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black"
+            onClick={() =>
+              onTogglePlay(beat)
+            }
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-black transition duration-200 hover:scale-105 active:scale-95"
+            aria-label={
+              isPlaying
+                ? `Pause ${beat.title}`
+                : `Play ${beat.title}`
+            }
           >
             {isPlaying ? (
-              <Pause size={19} />
+              <Pause
+                size={19}
+                strokeWidth={2.2}
+              />
             ) : (
-              <Play size={19} className="ml-0.5" />
+              <Play
+                size={19}
+                strokeWidth={2.2}
+                fill="currentColor"
+                className="ml-0.5"
+              />
             )}
           </button>
-
-          <SkipForward
-            size={19}
-            className="cursor-pointer text-slate-400 hover:text-white"
-          />
         </div>
 
-        <div className="hidden flex-1 items-center gap-[3px] overflow-hidden px-5 md:flex">
-          {bars.map((height, index) => (
-            <div
-              key={index}
-              className="min-w-[3px] flex-1 rounded-full bg-purple-600"
-              style={{
-                height: `${Math.max(10, height * 0.55)}px`,
-              }}
-            />
-          ))}
+        {/* WAVEFORM */}
+        <div className="mx-2 hidden h-10 min-w-0 flex-1 items-center gap-[2px] overflow-hidden md:flex lg:mx-6">
+          {bars.map(
+            (height, index) => (
+              <div
+                key={index}
+                className="min-w-[2px] flex-1 rounded-full bg-white/20"
+                style={{
+                  height: `${Math.max(
+                    6,
+                    height * 0.36
+                  )}px`,
+                }}
+              />
+            )
+          )}
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-5 px-5">
+        {/* BUY / LICENSE */}
+        <div className="ml-auto shrink-0">
           <button
             type="button"
-            onClick={() => onSelect(beat)}
-            className="flex items-center gap-2 text-xs font-bold"
+            onClick={() =>
+              onSelect(beat)
+            }
+            className="flex h-10 items-center justify-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.05] px-3 text-[11px] font-semibold text-white transition duration-200 hover:border-white hover:bg-white hover:text-black sm:px-4"
           >
-            <ShoppingCart size={18} />
+            <ShoppingBag
+              size={15}
+              strokeWidth={1.9}
+            />
+
             <span className="hidden sm:inline">
-              ₦{beat.priceNGN.toLocaleString()}
+              From
+            </span>
+
+            <span>
+              ₦
+              {beat.priceNGN.toLocaleString()}
             </span>
           </button>
-
-          <Volume2
-            size={19}
-            className="text-slate-300"
-          />
         </div>
       </div>
     </footer>

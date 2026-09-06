@@ -170,3 +170,22 @@ export async function createSignedDownloadUrl({
     }
   )
 }
+
+export async function createSignedPublicUrl({
+  key,
+  expiresIn = 900,
+}) {
+  const command =
+    new GetObjectCommand({
+      Bucket: R2_BUCKETS.PUBLIC,
+      Key: key,
+    })
+
+  return getSignedUrl(
+    r2,
+    command,
+    {
+      expiresIn,
+    }
+  )
+}

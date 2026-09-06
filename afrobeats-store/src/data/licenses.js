@@ -1,52 +1,98 @@
 export const licenses = [
   {
     id: 'basic',
+
     name: 'Basic',
+
     priceNGN: 35000,
+
     badge: 'Starter',
-    description: 'Non-Exclusive License.',
+
+    description:
+      'For independent releases and smaller projects.',
+
     features: [
-      'MP3 file',
-      'Receive file immediately after purchase',
-      'Up to 10,000 online audio streams',
-      'Distribute up to 2,000 copies',
+      'Unmastered MP3 file',
+      'Instant delivery after purchase',
+      'Up to 5,000 audio streams',
+      'Up to 2,000 distributed copies',
       '1 music video',
-      'Non-exclusive license',
       'Unlimited paid performances',
-      'Non-Exclusive License',
-      'Radio Broadcasting Allowed (2)'
+      'Limited radio broadcasting',
+      'Non-exclusive license',
     ],
   },
+
+  {
+    id: 'premium',
+
+    name: 'Premium',
+
+    priceNGN: 70000,
+
+    badge: 'Popular',
+
+    description:
+      'For growing releases that need higher usage limits.',
+
+    features: [
+      'Unmastered MP3 + WAV files',
+      'Instant delivery after purchase',
+      'Up to 50,000 audio streams',
+      'Higher distribution allowance',
+      'Multiple music videos',
+      'Unlimited paid performances',
+      'Expanded radio broadcasting',
+      'Non-exclusive license',
+    ],
+  },
+
   {
     id: 'trackout',
+
     name: 'Trackout',
-    priceNGN: 75000,
-    description: 'Non-Exclusive License.',
+
+    priceNGN: 85000,
+
+    badge: 'Stems Included',
+
+    description:
+      'For artists and engineers who need full control of the mix.',
+
     features: [
-      'MP3 + Wav files + Track Stems',
-      'Receive file immediately after purchase',
-      'Up to 10,000 online audio streams',
-      'Distribute up to 5,000 copies',
-      '2 music videos',
-      'Non-exclusive license',
+      'Unmastered MP3 + WAV files',
+      'Track stems included',
+      'Instant delivery after purchase',
+      'Commercial distribution permitted',
+      'Music video use permitted',
       'Unlimited paid performances',
-      'Non-Exclusive License',
-      'Radio Broadcasting Allowed (5)'
+      'Radio broadcasting permitted',
+      'Non-exclusive license',
     ],
   },
+
   {
     id: 'unlimited',
+
     name: 'Unlimited',
-    priceNGN: 115000,
-    description: 'Non-Exclusive License.',
+
+    priceNGN: 150000,
+
+    badge: 'Best License',
+
+    description:
+      'Maximum usage rights under a non-exclusive license.',
+
     features: [
-      'MP3 + WAV files + Track Stems',
-      'Receive file immediately after purchase',
-      'Unlimited Distribution',
-      'Unlimited streams',
+      'Unmastered MP3 + WAV files',
+      'Track stems included',
+      'Instant delivery after purchase',
+      'Unlimited audio streams',
+      'Unlimited distribution',
       'Unlimited music videos',
       'Unlimited paid performances',
-      'Unlimited Radio use allowed'
+      'Unlimited radio broadcasting',
+      'Non-exclusive license',
     ],
   },
 ]
