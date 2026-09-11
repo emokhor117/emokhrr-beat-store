@@ -75,21 +75,20 @@ const callbackUrl =
       },
 
       body: JSON.stringify({
-        email: order.customerEmail,
+  email: order.customerEmail,
 
-        // SECURITY:
-        // Amount comes from PostgreSQL,
-        // never from the frontend.
-        amount: String(order.totalKobo),
+  amount: String(order.totalKobo),
 
-        currency: order.currency,
+  currency: order.currency,
 
-        reference,
+  reference,
 
-        metadata: JSON.stringify({
-          orderNumber: order.orderNumber,
-        }),
-      }),
+  callback_url: callbackUrl,
+
+  metadata: JSON.stringify({
+    orderNumber: order.orderNumber,
+  }),
+}),
     }
   )
 

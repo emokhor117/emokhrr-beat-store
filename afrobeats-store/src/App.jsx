@@ -20,7 +20,8 @@ import LicenseModal from './components/LicenseModal'
 import CartDrawer from './components/CartDrawer'
 import CheckoutModal from './components/CheckoutModal'
 
-
+import PaymentSuccess from './components/PaymentSuccess'
+import AdminPage from './components/AdminPage'
 
 function App() {
   const [beats, setBeats] = useState([])
@@ -234,10 +235,14 @@ function App() {
     setSelectedLicense(null)
   }
 
-  function handleAddToCart(
+  function handleAddToCart(beat, license) {
+
+      const cartItem = {
+    cartId: `${beat.id}-${license.id}`,
     beat,
-    license
-  ) {
+    license,
+  }
+
     setCart((currentCart) => {
       const existingIndex =
         currentCart.findIndex(
@@ -245,43 +250,26 @@ function App() {
             item.beat.id === beat.id
         )
 
-      const newItem = {
-        beat,
-        license,
+      if (existingIndex !== -1) {
+        return currentCart.map((item, index) => index === existingIndex
+            ? cartItem
+            : item
+        )
       }
-
-      if (existingIndex === -1) {
-        return [
-          ...currentCart,
-          newItem,
-        ]
-      }
-
-      const updatedCart = [
-        ...currentCart,
-      ]
-
-      updatedCart[
-        existingIndex
-      ] = newItem
-
-      return updatedCart
+      return [...currentCart, cartItem]
     })
 
     handleCloseLicenseModal()
     setIsCartOpen(true)
   }
 
-  function handleRemoveFromCart(
-    beatId
-  ) {
-    setCart((currentCart) =>
-      currentCart.filter(
-        (item) =>
-          item.beat.id !== beatId
-      )
+function handleRemoveFromCart(cartId) {
+  setCart((currentCart) =>
+    currentCart.filter(
+      (item) => item.cartId !== cartId
     )
-  }
+  )
+}
 
   // -------------------------
   // CHECKOUT
@@ -421,6 +409,26 @@ window.location.href =
       setIsCheckoutLoading(false)
     }
   }
+
+
+const pathname =
+  window.location.pathname
+
+if (
+  pathname ===
+  '/payment-success'
+) {
+  return <PaymentSuccess />
+}
+
+if (
+  pathname === '/admin' ||
+  pathname.startsWith(
+    '/admin/'
+  )
+) {
+  return <AdminPage />
+}
 
   return (
     <div className="min-h-screen bg-[#09090b] text-white">

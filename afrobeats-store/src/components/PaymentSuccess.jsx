@@ -2,14 +2,35 @@ import {
   CheckCircle2,
   Download,
   LoaderCircle,
+  Music2,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react'
 
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react'
+
+const API_URL = 'http://localhost:5000'
+
+const assetLabels = {
+  MP3_UNMASTERED: {
+    title: 'MP3',
+    description: 'Unmastered MP3',
+  },
+
+  WAV_UNMASTERED: {
+    title: 'WAV',
+    description: 'Unmastered WAV',
+  },
+
+  STEMS_ZIP: {
+    title: 'Track Stems',
+    description: 'Individual track stems',
+  },
+}
 
 export default function PaymentSuccess() {
   const [status, setStatus] =
@@ -18,7 +39,7 @@ export default function PaymentSuccess() {
   const [downloads, setDownloads] =
     useState([])
 
-  const [orderData, setOrderData] =
+  const [orderStatus, setOrderStatus] =
     useState(null)
 
   const [message, setMessage] =
@@ -32,32 +53,27 @@ export default function PaymentSuccess() {
   const orderNumber =
     params.get('order')
 
-  useEffect(() => {
-    if (!orderNumber) {
-      setStatus('error')
-      setMessage(
-        'No order number was provided.'
-      )
+  const loadDownloads =
+    useCallback(async () => {
+      if (!orderNumber) {
+        setStatus('error')
+        setMessage(
+          'No order number was provided.'
+        )
+        return
+      }
 
-      return
-    }
-
-    let cancelled = false
-
-    async function loadDownloads() {
       const accessToken =
         sessionStorage.getItem(
           `order_access_${orderNumber}`
         )
 
       if (!accessToken) {
-        if (!cancelled) {
-          setStatus('missing-token')
+        setStatus('missing-token')
 
-          setMessage(
-            'Your secure order access token is not available in this browser session.'
-          )
-        }
+        setMessage(
+          'Your secure order access token is not available in this browser session.'
+        )
 
         return
       }
@@ -70,7 +86,7 @@ export default function PaymentSuccess() {
         )
 
         const response = await fetch(
-          `http://localhost:5000/api/orders/${encodeURIComponent(
+          `${API_URL}/api/orders/${encodeURIComponent(
             orderNumber
           )}/downloads`,
           {
@@ -86,62 +102,80 @@ export default function PaymentSuccess() {
 
         if (!response.ok) {
           /*
-            Payment redirect can happen
-            just before the webhook has
-            finished processing.
-          */
+           * Paystack may redirect the browser
+           * before the webhook has finished
+           * marking the order PAID.
+           */
           if (
-            response.status === 409 ||
-            response.status === 404
+            response.status === 403 &&
+            data?.message ===
+              'Order is not paid'
           ) {
+            setStatus('processing')
+
+            setMessage(
+              'Your payment was received. We are finishing verification now.'
+            )
+
+            return
+          }
+
+          if (
+            response.status === 403 &&
+            data?.message ===
+              'No download grants found'
+          ) {
+            setStatus('processing')
+
+            setMessage(
+              'Your payment is verified. Your downloads are being prepared.'
+            )
+
+            return
+          }
+
+          if (
+            response.status === 403 &&
+            data?.message ===
+              'No active downloads are available'
+          ) {
+            setStatus('expired')
+
+            setMessage(
+              'There are no active downloads available for this order.'
+            )
+
+            return
+          }
+
+          if (response.status === 403) {
             throw new Error(
-              'PAYMENT_PROCESSING'
+              'This browser is not authorized to access this order.'
             )
           }
 
           throw new Error(
             data?.message ||
-              'Unable to load your downloads'
+              'Unable to load your downloads.'
           )
         }
 
-        if (cancelled) {
-          return
-        }
-
-        setOrderData(
-          data.order || null
+        setDownloads(
+          Array.isArray(data.downloads)
+            ? data.downloads
+            : []
         )
 
-        setDownloads(
-          data.downloads ||
-            data.grants ||
-            []
+        setOrderStatus(
+          data.status || null
         )
 
         setStatus('success')
 
         setMessage(
-          'Your files are ready.'
+          'Your files are ready to download.'
         )
       } catch (error) {
-        if (cancelled) {
-          return
-        }
-
-        if (
-          error.message ===
-          'PAYMENT_PROCESSING'
-        ) {
-          setStatus('processing')
-
-          setMessage(
-            'Your payment was received. We are finishing verification now.'
-          )
-
-          return
-        }
-
         console.error(
           'Download retrieval failed:',
           error
@@ -154,32 +188,66 @@ export default function PaymentSuccess() {
             'Unable to retrieve your purchase.'
         )
       }
-    }
+    }, [orderNumber])
 
+  useEffect(() => {
     loadDownloads()
+  }, [loadDownloads])
 
-    return () => {
-      cancelled = true
-    }
-  }, [orderNumber])
+  /*
+   * Group files by purchased beat.
+   *
+   * This also supports checkout orders
+   * containing multiple beats.
+   */
+  const groupedDownloads =
+    downloads.reduce(
+      (groups, download) => {
+        const key = download.beatId
 
-  function retry() {
-    window.location.reload()
-  }
+        if (!groups[key]) {
+          groups[key] = {
+            beatId: download.beatId,
+            beatTitle:
+              download.beatTitle,
+            licenseCode:
+              download.licenseCode,
+            licenseName:
+              download.licenseName,
+            files: [],
+          }
+        }
+
+        groups[key].files.push(
+          download
+        )
+
+        return groups
+      },
+      {}
+    )
+
+  const purchasedBeats =
+    Object.values(groupedDownloads)
 
   return (
-    <main className="min-h-screen bg-[#09090b] px-4 py-16 text-white sm:px-6">
+    <main className="min-h-screen bg-[#09090b] px-4 py-12 text-white sm:px-6 sm:py-16">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-12 text-center">
+        {/* BRAND */}
+        <div className="mb-10 text-center">
           <span className="text-[17px] font-bold tracking-[0.16em]">
             EMOKHRR
           </span>
+
+          <p className="mt-1 text-[9px] uppercase tracking-[0.24em] text-white/25">
+            Beats
+          </p>
         </div>
 
         <div className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0d0d10]">
+          {/* STATUS HEADER */}
           <div className="border-b border-white/[0.07] p-6 sm:p-9">
-            {status ===
-            'success' ? (
+            {status === 'success' ? (
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-black">
                 <CheckCircle2
                   size={24}
@@ -192,8 +260,7 @@ export default function PaymentSuccess() {
                   size={24}
                   strokeWidth={1.8}
                   className={
-                    status ===
-                      'loading'
+                    status === 'loading'
                       ? 'animate-spin'
                       : ''
                   }
@@ -202,8 +269,7 @@ export default function PaymentSuccess() {
             )}
 
             <h1 className="mt-6 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">
-              {status ===
-              'success'
+              {status === 'success'
                 ? 'Payment successful'
                 : status ===
                     'processing'
@@ -212,9 +278,12 @@ export default function PaymentSuccess() {
                       'missing-token'
                     ? 'Order access required'
                     : status ===
-                        'error'
-                      ? 'We could not load your order'
-                      : 'Confirming payment'}
+                        'expired'
+                      ? 'Downloads unavailable'
+                      : status ===
+                          'error'
+                        ? 'We could not load your order'
+                        : 'Confirming payment'}
             </h1>
 
             <p className="mt-2 max-w-xl text-sm leading-6 text-white/40">
@@ -222,16 +291,25 @@ export default function PaymentSuccess() {
             </p>
 
             {orderNumber && (
-              <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.12em] text-white/25">
-                Order {orderNumber}
-              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/25">
+                  Order {orderNumber}
+                </span>
+
+                {orderStatus ===
+                  'PAID' && (
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/50">
+                    Paid
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
-          {status ===
-            'success' && (
+          {/* DOWNLOADS */}
+          {status === 'success' && (
             <div className="p-6 sm:p-9">
-              <div className="mb-6 flex items-start gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+              <div className="mb-7 flex items-start gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
                 <ShieldCheck
                   size={18}
                   strokeWidth={1.8}
@@ -239,111 +317,155 @@ export default function PaymentSuccess() {
                 />
 
                 <p className="text-xs leading-5 text-white/40">
-                  These download
-                  links are generated
-                  securely and may
-                  expire. If a link
-                  expires, return to
-                  this page to request
-                  a new one while your
-                  download access is
+                  Your files are
+                  delivered through
+                  secure temporary
+                  links. If a link
+                  expires, use Refresh
+                  links below to
+                  generate fresh ones
+                  while your order
+                  access remains
                   active.
                 </p>
               </div>
 
-              {downloads.length ===
-              0 ? (
-                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-8 text-center">
-                  <p className="text-sm text-white/50">
-                    No downloadable
-                    files were returned
-                    for this order.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {downloads.map(
-                    (
-                      download,
-                      index
-                    ) => {
-                      const url =
-                        download.url ||
-                        download.downloadUrl ||
-                        download.signedUrl
+              <div className="space-y-7">
+                {purchasedBeats.map(
+                  (beat) => (
+                    <section
+                      key={beat.beatId}
+                    >
+                      {/* BEAT */}
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2 text-white/30">
+                          <Music2
+                            size={13}
+                            strokeWidth={
+                              1.8
+                            }
+                          />
 
-                      const label =
-                        download.name ||
-                        download.fileName ||
-                        download.assetType ||
-                        download.type ||
-                        `Download ${
-                          index + 1
-                        }`
+                          <span className="text-[9px] font-medium uppercase tracking-[0.16em]">
+                            Purchased
+                            Beat
+                          </span>
+                        </div>
 
-                      return (
-                        <a
-                          key={
-                            download.id ||
-                            `${label}-${index}`
+                        <h2 className="mt-2 text-lg font-semibold tracking-[-0.02em]">
+                          {
+                            beat.beatTitle
                           }
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 transition hover:border-white/[0.16] hover:bg-white/[0.045]"
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-white">
-                              {
-                                label
-                              }
-                            </p>
+                        </h2>
 
-                            <p className="mt-1 text-[11px] text-white/30">
-                              Secure
-                              download
-                            </p>
-                          </div>
+                        <span className="mt-2 inline-flex rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/45">
+                          {
+                            beat.licenseName
+                          }{' '}
+                          License
+                        </span>
+                      </div>
 
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black">
-                            <Download
-                              size={
-                                17
+                      {/* FILES */}
+                      <div className="space-y-2">
+                        {beat.files.map(
+                          (file) => {
+                            const info =
+                              assetLabels[
+                                file
+                                  .assetType
+                              ] || {
+                                title:
+                                  file.assetType,
+                                description:
+                                  'Purchased file',
                               }
-                              strokeWidth={
-                                2
-                              }
-                            />
-                          </div>
-                        </a>
-                      )
-                    }
-                  )}
-                </div>
-              )}
 
-              {orderData && (
-                <div className="mt-7 border-t border-white/[0.07] pt-6 text-xs text-white/30">
-                  Purchase verified
-                  securely by EMOKHRR
-                  Beats.
-                </div>
-              )}
+                            return (
+                              <a
+                                key={
+                                  file.grantId
+                                }
+                                href={
+                                  file.signedUrl
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 transition hover:border-white/[0.16] hover:bg-white/[0.045]"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-white">
+                                    {
+                                      info.title
+                                    }
+                                  </p>
+
+                                  <p className="mt-1 text-[11px] text-white/30">
+                                    {
+                                      info.description
+                                    }
+                                  </p>
+                                </div>
+
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black transition group-hover:scale-[1.03]">
+                                  <Download
+                                    size={
+                                      17
+                                    }
+                                    strokeWidth={
+                                      2
+                                    }
+                                  />
+                                </div>
+                              </a>
+                            )
+                          }
+                        )}
+                      </div>
+                    </section>
+                  )
+                )}
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3 border-t border-white/[0.07] pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[10px] leading-5 text-white/25">
+                  Signed links expire
+                  after 5 minutes.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={
+                    loadDownloads
+                  }
+                  className="flex h-10 items-center justify-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-[10px] font-semibold text-white/60 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <RefreshCw
+                    size={13}
+                  />
+
+                  Refresh links
+                </button>
+              </div>
             </div>
           )}
 
+          {/* PROCESSING / ERROR */}
           {(status ===
             'processing' ||
             status === 'error') && (
             <div className="border-t border-white/[0.07] p-6 sm:p-9">
               <button
                 type="button"
-                onClick={retry}
-                className="flex h-11 items-center gap-2 rounded-full bg-white px-5 text-xs font-semibold text-black"
+                onClick={
+                  loadDownloads
+                }
+                className="flex h-11 items-center gap-2 rounded-full bg-white px-5 text-xs font-semibold text-black transition hover:bg-white/90"
               >
                 <RefreshCw
                   size={15}
                 />
+
                 Check again
               </button>
             </div>

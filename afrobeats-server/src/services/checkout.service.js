@@ -30,6 +30,54 @@ function generateOrderNumber() {
   return `EMK-${date}-${randomPart}`
 }
 
+async function verifyLicenseDeliverables({
+  beatId,
+  licenseTypeId,
+  orm,
+}) {
+  // Find every asset type this license promises.
+  const requiredGrants =
+    await orm.public.LicenseAssetGrant
+      .where({
+        licenseTypeId,
+      })
+      .all()
+
+  if (requiredGrants.length === 0) {
+    throw new Error(
+      'LICENSE_DELIVERABLES_NOT_CONFIGURED'
+    )
+  }
+
+  for (const grant of requiredGrants) {
+    // The beat must have at least one active
+    // version of every required asset.
+    const assets =
+      await orm.public.BeatAsset
+        .where({
+          beatId,
+          type: grant.assetType,
+          active: true,
+        })
+        .all()
+
+    if (assets.length === 0) {
+      console.error(
+        'License deliverable missing:',
+        {
+          beatId,
+          licenseTypeId,
+          assetType: grant.assetType,
+        }
+      )
+
+      throw new Error(
+        'LICENSE_DELIVERABLE_MISSING'
+      )
+    }
+  }
+}
+
 async function calculateOrderWithOrm(
   items,
   orm
@@ -85,7 +133,18 @@ async function calculateOrderWithOrm(
         'LICENSE_NOT_AVAILABLE'
       )
     }
-
+/*
+ * 4. Verify that every file promised by
+ * this license actually exists for the beat.
+ *
+ * This happens server-side. A customer
+ * cannot bypass it by manipulating React.
+ */
+await verifyLicenseDeliverables({
+  beatId: beat.id,
+  licenseTypeId: license.id,
+  orm,
+})
     orderItems.push({
       beatDatabaseId: beat.id,
       beatPublicId: beat.publicId,

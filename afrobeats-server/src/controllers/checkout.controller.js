@@ -40,11 +40,38 @@ export async function createCheckout(req, res) {
       },
     })
   } catch (error) {
-    if (error.message === 'INVALID_BEAT') {
-      return res.status(400).json({
-        success: false,
-        message: 'One or more beats are invalid',
-      })
+
+    if (
+  error.message ===
+    'LICENSE_DELIVERABLE_MISSING'
+) {
+  return res.status(409).json({
+    success: false,
+    message:
+      'This license is temporarily unavailable for this beat because its required files are not ready.',
+  })
+}
+
+if (
+  error.message ===
+    'LICENSE_DELIVERABLES_NOT_CONFIGURED'
+) {
+  console.error(
+    'License has no asset grant configuration'
+  )
+
+  return res.status(409).json({
+    success: false,
+    message:
+      'This license is temporarily unavailable.',
+  })
+}
+
+if (error.message === 'INVALID_BEAT') {
+  return res.status(400).json({
+    success: false,
+    message: 'One or more beats are invalid',
+  })
     }
 
     if (error.message === 'INVALID_LICENSE') {

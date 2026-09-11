@@ -85,6 +85,32 @@ export async function listBeats(req, res, next) {
             continue
           }
 
+          const requiredGrants =
+  await db.orm.public.LicenseAssetGrant
+    .where({
+      licenseTypeId: licenseType.id,
+    })
+    .all()
+
+let available =
+  requiredGrants.length > 0
+
+for (const grant of requiredGrants) {
+  const matchingAssets =
+    await db.orm.public.BeatAsset
+      .where({
+        beatId: beat.id,
+        type: grant.assetType,
+        active: true,
+      })
+      .all()
+
+  if (matchingAssets.length === 0) {
+    available = false
+    break
+  }
+}
+
           licenses.push({
             id: licenseType.code,
             code: licenseType.code,
@@ -102,6 +128,7 @@ export async function listBeats(req, res, next) {
 
             sortOrder:
               licenseType.sortOrder,
+            available
           })
         }
 

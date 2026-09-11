@@ -7,10 +7,8 @@ import {
 const licenseDisplay = {
   basic: {
     badge: 'Starter',
-
     description:
       'For independent releases and smaller projects.',
-
     features: [
       'Unmastered MP3 file',
       'Instant delivery after purchase',
@@ -25,10 +23,8 @@ const licenseDisplay = {
 
   premium: {
     badge: 'Popular',
-
     description:
       'For growing releases that need higher usage limits.',
-
     features: [
       'Unmastered MP3 + WAV files',
       'Instant delivery after purchase',
@@ -43,10 +39,8 @@ const licenseDisplay = {
 
   trackout: {
     badge: 'Stems Included',
-
     description:
       'For artists and engineers who need full control of the mix.',
-
     features: [
       'Unmastered MP3 + WAV files',
       'Track stems included',
@@ -61,10 +55,8 @@ const licenseDisplay = {
 
   unlimited: {
     badge: 'Best License',
-
     description:
       'Maximum usage rights under a non-exclusive license.',
-
     features: [
       'Unmastered MP3 + WAV files',
       'Track stems included',
@@ -91,291 +83,299 @@ export default function LicenseModal({
     return null
   }
 
+  function handleSelectLicense(license) {
+    if (license.available === false) {
+      return
+    }
+
+    setSelectedLicense(license)
+  }
+
+  function handleContinue() {
+    if (
+      !selectedLicense ||
+      selectedLicense.available === false
+    ) {
+      return
+    }
+
+    onContinue()
+  }
+
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 backdrop-blur-md sm:items-center sm:p-5"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[94vh] w-full overflow-y-auto rounded-t-[28px] border border-white/[0.08] bg-[#0d0d10] shadow-2xl sm:max-w-6xl sm:rounded-[28px]"
-        onClick={(event) =>
-          event.stopPropagation()
-        }
-      >
+    <div className="fixed inset-0 z-[110] flex items-end justify-center sm:items-center sm:p-6">
+      {/* OVERLAY */}
+      <button
+        type="button"
+        aria-label="Close license selection"
+        onClick={onClose}
+        className="absolute inset-0 h-full w-full bg-black/80 backdrop-blur-sm"
+      />
+
+      {/* MODAL */}
+      <div className="relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-white/[0.08] bg-[#0d0d10] text-white shadow-2xl sm:max-w-3xl sm:rounded-[28px]">
         {/* HEADER */}
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/[0.07] bg-[#0d0d10]/95 px-5 py-5 backdrop-blur-xl sm:px-7">
+        <header className="flex shrink-0 items-center justify-between border-b border-white/[0.07] px-5 py-5 sm:px-7">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/30">
-              Choose your license
+            <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-white/30">
+              Choose a license
             </p>
 
-            <h2 className="mt-1 truncate text-xl font-semibold text-white sm:text-2xl">
+            <h2 className="mt-1 truncate text-lg font-semibold tracking-[-0.02em] text-white">
               {beat.title}
             </h2>
+
+            <p className="mt-1 text-[11px] text-white/30">
+              {beat.producer}
+            </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-white/55 transition hover:bg-white/[0.08] hover:text-white"
-            aria-label="Close license selector"
+            className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-white/50 transition hover:bg-white/[0.08] hover:text-white"
+            aria-label="Close"
           >
             <X
               size={18}
               strokeWidth={1.8}
             />
           </button>
-        </div>
+        </header>
 
-        <div className="p-5 sm:p-7">
-          {/* BEAT SUMMARY */}
-          <div className="mb-7 flex items-center gap-4">
-            {beat.image ? (
-              <img
-                src={beat.image}
-                alt={beat.title}
-                className="h-16 w-16 rounded-xl object-cover sm:h-20 sm:w-20"
-              />
-            ) : (
-              <div className="h-16 w-16 rounded-xl bg-white/[0.05] sm:h-20 sm:w-20" />
-            )}
-
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white sm:text-base">
-                {beat.title}
-              </p>
-
-              <p className="mt-1 text-xs text-white/35">
-                {beat.genre || 'Genre'}
-                {beat.bpm
-                  ? ` · ${beat.bpm} BPM`
-                  : ''}
-                {beat.key
-                  ? ` · ${beat.key}`
-                  : ''}
-              </p>
-
-              <p className="mt-1 text-[11px] text-white/25">
-                Select the license that
-                fits your release.
-              </p>
-            </div>
-          </div>
-
-          {/* LICENSES */}
+        {/* CONTENT */}
+        <div className="overflow-y-auto p-5 sm:p-7">
           {licenses.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-10 text-center">
-              <p className="text-sm font-medium text-white/60">
-                No licenses currently
-                available for this beat.
+            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 text-center">
+              <p className="text-sm font-medium text-white">
+                No licenses available
+              </p>
+
+              <p className="mt-2 text-xs leading-5 text-white/35">
+                This beat does not currently have any licenses available
+                for purchase.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {licenses.map(
-                (license) => {
-                  const isSelected =
-                    selectedLicense?.id ===
-                    license.id
+            <div className="grid gap-3 sm:grid-cols-2">
+              {licenses.map((license) => {
+                const code =
+                  license.code?.toLowerCase() ||
+                  license.id?.toLowerCase()
 
-                  const display =
-                    licenseDisplay[
-                      license.code?.toLowerCase() ||
-                        license.id?.toLowerCase()
-                    ] || {
-                      badge: null,
-                      description:
-                        license.description ||
-                        'Commercial beat license.',
-                      features: [
-                        'Commercial use permitted',
-                        'License terms apply',
-                      ],
+                const display =
+                  licenseDisplay[code] || {
+                    badge: null,
+                    description:
+                      license.description ||
+                      'Beat license',
+                    features: [],
+                  }
+
+                const isAvailable =
+                  license.available !== false
+
+                const isSelected =
+                  selectedLicense?.id ===
+                    license.id ||
+                  selectedLicense?.code ===
+                    license.code
+
+                return (
+                  <button
+                    key={
+                      license.id ||
+                      license.code
                     }
+                    type="button"
+                    disabled={!isAvailable}
+                    onClick={() =>
+                      handleSelectLicense(
+                        license
+                      )
+                    }
+                    className={[
+                      'relative flex h-full flex-col rounded-2xl border p-4 text-left transition sm:p-5',
 
-                  return (
-                    <button
-                      key={license.id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedLicense(
-                          license
-                        )
-                      }
-                      className={`relative flex h-full flex-col rounded-2xl border p-5 text-left transition duration-200 ${
-                        isSelected
-                          ? 'border-white bg-white text-black shadow-xl'
-                          : 'border-white/[0.08] bg-white/[0.025] text-white hover:border-white/[0.18] hover:bg-white/[0.045]'
-                      }`}
-                    >
-                      {/* TITLE / BADGE */}
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3
-                              className={`text-lg font-semibold ${
-                                isSelected
-                                  ? 'text-black'
-                                  : 'text-white'
-                              }`}
-                            >
-                              {
-                                license.name
-                              }
-                            </h3>
+                      isSelected
+                        ? 'border-white bg-white/[0.08]'
+                        : 'border-white/[0.08] bg-white/[0.025]',
 
-                            {display.badge && (
-                              <span
-                                className={`rounded-full px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
-                                  isSelected
-                                    ? 'bg-black/10 text-black/60'
-                                    : 'bg-white/[0.07] text-white/45'
-                                }`}
-                              >
+                      isAvailable
+                        ? 'hover:border-white/[0.16] hover:bg-white/[0.045]'
+                        : 'cursor-not-allowed opacity-40',
+                    ].join(' ')}
+                  >
+                    {/* TOP */}
+                    <div className="flex w-full items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-semibold text-white">
+                            {license.name}
+                          </h3>
+
+                          {display.badge &&
+                            isAvailable && (
+                              <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-white/40">
                                 {
                                   display.badge
                                 }
                               </span>
                             )}
-                          </div>
 
-                          <p
-                            className={`mt-2 text-xs leading-5 ${
-                              isSelected
-                                ? 'text-black/55'
-                                : 'text-white/35'
-                            }`}
-                          >
-                            {
-                              display.description
-                            }
-                          </p>
+                          {!isAvailable && (
+                            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] text-white/40">
+                              Unavailable
+                            </span>
+                          )}
                         </div>
 
-                        <div
-                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                            isSelected
-                              ? 'border-black bg-black text-white'
-                              : 'border-white/20'
-                          }`}
-                        >
-                          {isSelected && (
+                        <p className="mt-2 text-[11px] leading-5 text-white/35">
+                          {
+                            display.description
+                          }
+                        </p>
+                      </div>
+
+                      {isSelected &&
+                        isAvailable && (
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-black">
                             <Check
-                              size={12}
+                              size={13}
                               strokeWidth={
                                 2.4
                               }
                             />
-                          )}
-                        </div>
-                      </div>
+                          </div>
+                        )}
+                    </div>
 
-                      {/* PRICE */}
-                      <div className="mt-6">
-                        <span
-                          className={`text-2xl font-semibold tracking-[-0.03em] ${
-                            isSelected
-                              ? 'text-black'
-                              : 'text-white'
-                          }`}
-                        >
-                          ₦
-                          {license.priceNGN.toLocaleString(
-                            'en-NG'
-                          )}
-                        </span>
-                      </div>
+                    {/* PRICE */}
+                    <div className="mt-5">
+                      <span className="text-xl font-semibold tracking-[-0.03em] text-white">
+                        ₦
+                        {license.priceNGN.toLocaleString(
+                          'en-NG'
+                        )}
+                      </span>
+                    </div>
 
-                      {/* DIVIDER */}
-                      <div
-                        className={`my-5 border-t ${
-                          isSelected
-                            ? 'border-black/10'
-                            : 'border-white/[0.07]'
-                        }`}
-                      />
-
-                      {/* FEATURES */}
-                      <ul className="space-y-3">
-                        {display.features.map(
-                          (feature) => (
-                            <li
-                              key={
-                                feature
-                              }
-                              className={`flex items-start gap-2.5 text-xs leading-5 ${
-                                isSelected
-                                  ? 'text-black/65'
-                                  : 'text-white/45'
-                              }`}
-                            >
-                              <Check
-                                size={
-                                  14
-                                }
-                                strokeWidth={
-                                  2
-                                }
-                                className={`mt-0.5 shrink-0 ${
-                                  isSelected
-                                    ? 'text-black'
-                                    : 'text-white/65'
-                                }`}
-                              />
-
-                              <span>
-                                {
+                    {/* FEATURES */}
+                    {display.features.length >
+                      0 && (
+                      <div className="mt-5 flex-1 border-t border-white/[0.07] pt-4">
+                        <ul className="space-y-2.5">
+                          {display.features.map(
+                            (feature) => (
+                              <li
+                                key={
                                   feature
                                 }
-                              </span>
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </button>
-                  )
-                }
-              )}
+                                className="flex items-start gap-2.5"
+                              >
+                                <Check
+                                  size={13}
+                                  strokeWidth={
+                                    2
+                                  }
+                                  className="mt-0.5 shrink-0 text-white/40"
+                                />
+
+                                <span className="text-[10px] leading-4 text-white/40">
+                                  {
+                                    feature
+                                  }
+                                </span>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* UNAVAILABLE MESSAGE */}
+                    {!isAvailable && (
+                      <div className="mt-5 border-t border-white/[0.07] pt-4">
+                        <p className="text-[10px] leading-5 text-white/45">
+                          Required beat
+                          files are not
+                          currently
+                          available for
+                          this license.
+                        </p>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
 
-          {/* FOOTER */}
-          <div className="mt-7 flex flex-col gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-white/60">
-                <ShieldCheck
-                  size={18}
-                  strokeWidth={1.8}
-                />
-              </div>
+          {/* SECURITY NOTE */}
+          <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3.5">
+            <ShieldCheck
+              size={16}
+              strokeWidth={1.8}
+              className="mt-0.5 shrink-0 text-white/45"
+            />
 
-              <div>
-                <p className="text-xs font-semibold text-white">
-                  License terms apply
-                </p>
+            <p className="text-[10px] leading-5 text-white/30">
+              License availability,
+              pricing and file
+              entitlements are verified
+              securely by the server
+              before payment.
+            </p>
+          </div>
+        </div>
 
-                <p className="mt-1 max-w-2xl text-[11px] leading-5 text-white/35">
-                  Your selected license
-                  determines your permitted
-                  usage, distribution
-                  limits, streaming limits
-                  and included files.
+        {/* FOOTER */}
+        <footer className="shrink-0 border-t border-white/[0.07] bg-[#0d0d10] p-5 sm:px-7">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              {selectedLicense &&
+              selectedLicense.available !==
+                false ? (
+                <>
+                  <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-white/30">
+                    Selected
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {
+                      selectedLicense.name
+                    }
+
+                    <span className="ml-2 text-white/35">
+                      ₦
+                      {selectedLicense.priceNGN.toLocaleString(
+                        'en-NG'
+                      )}
+                    </span>
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-white/30">
+                  Select an available
+                  license to continue.
                 </p>
-              </div>
+              )}
             </div>
 
             <button
               type="button"
-              onClick={onContinue}
-              disabled={!selectedLicense}
-              className="h-11 w-full rounded-full bg-white px-6 text-xs font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/[0.08] disabled:text-white/20 sm:w-auto sm:min-w-[160px]"
+              disabled={
+                !selectedLicense ||
+                selectedLicense.available ===
+                  false
+              }
+              onClick={handleContinue}
+              className="h-11 rounded-full bg-white px-6 text-xs font-semibold text-black transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/25"
             >
-              {selectedLicense
-                ? 'Add to cart'
-                : 'Select a license'}
+              Add to cart
             </button>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   )

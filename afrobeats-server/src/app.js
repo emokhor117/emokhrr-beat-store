@@ -6,13 +6,14 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 
 import { validateEnvironment } from './config/env.js'
-
+import adminBeatLicenseRoutes from './routes/admin-beat-license.routes.js'
 import checkoutRoutes from './routes/checkout.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
 import beatAssetRoutes from './routes/beat-asset.routes.js'
 import downloadRoutes from './routes/download.routes.js'
 import adminAuthRoutes from './routes/admin-auth.routes.js'
 import beatRoutes from './routes/beat.routes.js'
+import adminBeatRoutes from './routes/admin-beat.routes.js'
 
 validateEnvironment()
 
@@ -73,7 +74,11 @@ app.use(
     limit: '20kb',
   })
 )
-
+app.use('/api', adminBeatRoutes)
+app.use(
+  '/api',
+  adminBeatLicenseRoutes
+)
 app.use(
   express.urlencoded({
     extended: false,

@@ -104,12 +104,7 @@ export async function getAuthorizedOrderDownloads({
       expiresIn: 300,
     })
 
-    await db.orm.public.DownloadEvent.create({
-      downloadGrantId: grant.id,
-      ipAddress: ipAddress || null,
-      userAgent: userAgent || null,
-    })
-
+   
     downloads.push({
       grantId: grant.id,
 
