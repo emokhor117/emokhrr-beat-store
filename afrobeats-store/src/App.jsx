@@ -19,9 +19,13 @@ import BottomPlayer from './components/BottomPlayer'
 import LicenseModal from './components/LicenseModal'
 import CartDrawer from './components/CartDrawer'
 import CheckoutModal from './components/CheckoutModal'
+import Hero from './components/Hero'
+import Services from './components/Services'
 
 import PaymentSuccess from './components/PaymentSuccess'
 import AdminPage from './components/AdminPage'
+
+import { API_URL } from './config/api'
 
 function App() {
   const [beats, setBeats] = useState([])
@@ -79,7 +83,7 @@ function App() {
         setBeatsError('')
 
         const response = await fetch(
-          'http://localhost:5000/api/beats'
+          `${API_URL}/api/beats`
         )
 
         const data = await response.json()
@@ -299,9 +303,7 @@ function handleRemoveFromCart(cartId) {
       setIsCheckoutLoading(true)
 
       const checkoutResponse =
-        await fetch(
-          'http://localhost:5000/api/checkout',
-          {
+        await fetch(`${API_URL}/api/checkout`, {
             method: 'POST',
 
             headers: {
@@ -344,8 +346,8 @@ function handleRemoveFromCart(cartId) {
 
       const paymentResponse =
         await fetch(
-          'http://localhost:5000/api/payments/paystack/initialize',
-          {
+  `${API_URL}/api/payments/paystack/initialize`,
+  {
             method: 'POST',
 
             headers: {
@@ -431,7 +433,7 @@ if (
 }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white">
+    <div className="min-h-screen bg-[#eef3fb] text-[#18202d]">
       <Navbar
   cartCount={cart.length}
   onOpenCart={() =>
@@ -450,28 +452,66 @@ if (
 
       {/* HERO */}
 
-      <section
-        ref={homeRef}
-        className="scroll-mt-24"
-      >
-        {/* keep your existing hero JSX here */}
-      </section>
+      {/* HERO */}
+
+<section
+  ref={homeRef}
+  className="scroll-mt-24"
+>
+  <Hero
+    onExploreBeats={() =>
+      scrollToSection(beatsRef)
+    }
+    onServices={() =>
+      scrollToSection(servicesRef)
+    }
+    featuredBeat={
+      beats.length > 0
+        ? beats[0]
+        : null
+    }
+    onPlayFeatured={() => {
+      if (beats[0]) {
+        handleTogglePlay(
+          beats[0]
+        )
+      }
+    }}
+    isFeaturedPlaying={
+      currentBeat?.id ===
+        beats[0]?.id &&
+      isPlaying
+    }
+  />
+</section>
 
       {/* BEAT STORE */}
 
       <section
         ref={beatsRef}
-        className="scroll-mt-24"
+        className="scroll-mt-24 bg-[#f8f6ff]"
       >
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="mb-10">
-            <p className="mb-2 text-sm uppercase tracking-[0.2em] text-zinc-500">
-              Catalogue
-            </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+  <div>
+    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#806da0]">
+      The catalogue
+    </p>
 
-            <h2 className="text-3xl font-semibold sm:text-4xl">
-              Beat Store
-            </h2>
+    <h2 className="mt-3 text-4xl font-black tracking-[-0.055em] text-[#24183d] sm:text-5xl">
+      Pick your next
+      <span className="text-[#6c43f3]">
+        {' '}record.
+      </span>
+    </h2>
+  </div>
+
+  <p className="max-w-[330px] text-xs leading-6 text-[#8b7e98]">
+    Preview the catalogue and choose the
+    license that fits your release.
+  </p>
+</div>
           </div>
 
           {beatsLoading ? (
@@ -517,42 +557,44 @@ if (
       {/* SERVICES */}
 
       <section
-        ref={servicesRef}
-        className="scroll-mt-24"
-      >
-        {/* keep your existing services JSX here */}
-      </section>
+  ref={servicesRef}
+  className="scroll-mt-24"
+>
+  <Services />
+</section>
 
       {currentBeat?.previewUrl && (
         <audio
-          ref={audioRef}
-          src={
-            currentBeat.previewUrl
-          }
-          onEnded={() =>
-            setIsPlaying(false)
-          }
-        />
+  ref={audioRef}
+  src={currentBeat.previewUrl}
+  preload="metadata"
+  onPlay={() =>
+    setIsPlaying(true)
+  }
+  onPause={() =>
+    setIsPlaying(false)
+  }
+  onEnded={() =>
+    setIsPlaying(false)
+  }
+/>
       )}
 
       <BottomPlayer
-        beat={currentBeat}
-        isPlaying={isPlaying}
-        onTogglePlay={() => {
-          if (currentBeat) {
-            handleTogglePlay(
-              currentBeat
-            )
-          }
-        }}
-        onBuy={() => {
-          if (currentBeat) {
-            handleSelectBeat(
-              currentBeat
-            )
-          }
-        }}
-      />
+  beat={currentBeat}
+  isPlaying={isPlaying}
+  audioRef={audioRef}
+  onTogglePlay={() => {
+    if (currentBeat) {
+      handleTogglePlay(
+        currentBeat
+      )
+    }
+  }}
+  onSelect={(beat) => {
+    handleSelectBeat(beat)
+  }}
+/>
 
       <LicenseModal
   beat={selectedBeat}

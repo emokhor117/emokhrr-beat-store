@@ -26,10 +26,11 @@ import {
   useState,
 } from 'react'
 
-import emokhrrLogo from '../assets/emokhrr-logo.png'
+import emokhrrLogo from '../assets/emokkhor-logo.png'
+import AdminNewBeatModal from './AdminNewBeatModal'
+import AdminManageBeatModal from './AdminManageBeatModal'
 
-const API_URL =
-  'http://localhost:5000'
+import { API_URL } from '../config/api'
 
 const statusStyles = {
   ACTIVE: {
@@ -175,8 +176,18 @@ export default function AdminDashboard({
   const [beats, setBeats] =
     useState([])
 
+  const [
+  isNewBeatOpen,
+  setIsNewBeatOpen,
+] = useState(false)
+
   const [isLoading, setIsLoading] =
     useState(true)
+
+  const [
+  selectedBeat,
+  setSelectedBeat,
+] = useState(null)
 
   const [error, setError] =
     useState('')
@@ -309,7 +320,7 @@ export default function AdminDashboard({
   ]
 
   return (
-    <div className="min-h-screen bg-[#eee9ff] font-['Poppins'] text-[#18141f]">
+    <div className="min-h-screen bg-[#eee9ff] font-['Manrope'] text-[#18141f]">
       {/* AMBIENT BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-28 -top-28 h-72 w-72 rounded-full bg-[#bca8ff]/30 blur-3xl" />
@@ -457,16 +468,16 @@ export default function AdminDashboard({
                   Refresh
                 </button>
 
-                <button
-                  type="button"
-                  className="flex h-11 items-center gap-2 rounded-full bg-[#6236ff] px-5 text-[10px] font-semibold text-white shadow-[0_10px_26px_rgba(98,54,255,0.28)] transition hover:bg-[#5127e8]"
-                >
-                  <Plus
-                    size={15}
-                  />
-
-                  New beat
-                </button>
+               <button
+  type="button"
+  onClick={() =>
+    setIsNewBeatOpen(true)
+  }
+  className="flex h-11 items-center gap-2 rounded-full bg-[#6236ff] px-5 text-[10px] font-semibold text-white shadow-[0_10px_26px_rgba(98,54,255,0.28)] transition hover:bg-[#5127e8]"
+>
+  <Plus size={15} />
+  New beat
+</button>
               </div>
             </div>
           </section>
@@ -739,17 +750,18 @@ export default function AdminDashboard({
                             </div>
 
                             <button
-                              type="button"
-                              className="flex h-11 items-center gap-2 rounded-full border border-[#cfc3f6] bg-white px-4 text-[10px] font-semibold text-[#4f4660] transition hover:border-[#6236ff]/30 hover:text-[#6236ff]"
-                            >
-                              <Settings2
-                                size={
-                                  14
-                                }
-                              />
+  type="button"
+  onClick={() =>
+    setSelectedBeat(beat)
+  }
+  className="flex h-11 items-center gap-2 rounded-full border border-[#cfc3f6] bg-white px-4 text-[10px] font-semibold text-[#4f4660] transition hover:border-[#6236ff]/30 hover:text-[#6236ff]"
+>
+  <Settings2
+    size={14}
+  />
 
-                              Manage
-                            </button>
+  Manage
+</button>
                           </div>
                         </div>
                       </article>
@@ -760,6 +772,27 @@ export default function AdminDashboard({
           </section>
         </main>
       </div>
+      <AdminNewBeatModal
+  isOpen={isNewBeatOpen}
+  onClose={() =>
+    setIsNewBeatOpen(false)
+  }
+  onCreated={() => {
+    setIsNewBeatOpen(false)
+    loadBeats()
+  }}
+/>
+
+<AdminManageBeatModal
+  beat={selectedBeat}
+  isOpen={Boolean(selectedBeat)}
+  onClose={() =>
+    setSelectedBeat(null)
+  }
+  onUpdated={async () => {
+    await loadBeats()
+  }}
+/>
     </div>
   )
 }

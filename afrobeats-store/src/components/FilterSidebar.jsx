@@ -1,5 +1,6 @@
 import {
   Search,
+  SlidersHorizontal,
   X,
 } from 'lucide-react'
 
@@ -13,49 +14,69 @@ const tags = [
   'late night',
 ]
 
-const filterOptions = [
-  'All',
-  'Afrobeats',
-  'Afro-Fusion',
-  'Dark R&B',
-  'R&B',
-  'Trap Soul',
-  'Afro-R&B',
-]
-
 export default function FilterSidebar({
   search,
   setSearch,
   genre,
   setGenre,
+  genres = [],
 }) {
   const hasFilters =
     search.trim() !== '' ||
     genre !== 'All'
 
-  const clearFilters = () => {
+  function clearFilters() {
     setSearch('')
     setGenre('All')
   }
 
   return (
-    <aside className="w-full border-b border-white/[0.06] bg-[#09090b] lg:w-[260px] lg:shrink-0 lg:border-b-0 lg:border-r">
-      <div className="p-4 sm:p-6 lg:sticky lg:top-[72px] lg:p-6">
+    <aside className="w-full lg:w-[230px] lg:shrink-0">
+      <div className="rounded-[24px] border border-white/70 bg-white/55 p-4 shadow-[0_15px_40px_rgba(42,57,80,0.06)] backdrop-blur-xl sm:p-5 lg:sticky lg:top-[100px]">
+        {/* HEADER */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e4e7ff] text-[#59617f]">
+              <SlidersHorizontal
+                size={13}
+                strokeWidth={2}
+              />
+            </div>
+
+            <p className="text-[10px] font-bold text-[#263144]">
+              Find your sound
+            </p>
+          </div>
+
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-[9px] font-bold text-[#8c97a8] transition hover:text-[#18202d]"
+            >
+              Clear
+            </button>
+          )}
+        </div>
 
         {/* SEARCH */}
         <div>
-          <label className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.22em] text-white/30">
+          <label
+            htmlFor="beat-search"
+            className="mb-2.5 block text-[8px] font-bold uppercase tracking-[0.18em] text-[#9aa4b2]"
+          >
             Search
           </label>
 
           <div className="relative">
             <Search
-              size={15}
+              size={13}
               strokeWidth={1.8}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8995a6]"
             />
 
             <input
+              id="beat-search"
               value={search}
               onChange={(event) =>
                 setSearch(
@@ -63,7 +84,7 @@ export default function FilterSidebar({
                 )
               }
               placeholder="Search beats"
-              className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] pl-10 pr-9 text-xs text-white outline-none transition placeholder:text-white/25 hover:border-white/[0.12] focus:border-white/25 focus:bg-white/[0.05]"
+              className="h-11 w-full rounded-xl border border-[#18202d]/[0.07] bg-[#f5f7fb]/80 pl-10 pr-9 text-[10px] font-semibold text-[#253044] outline-none transition placeholder:text-[#a3adba] hover:border-[#18202d]/10 focus:border-[#8c89d9]/50 focus:bg-white focus:ring-4 focus:ring-[#aaa7ed]/10"
             />
 
             {search && (
@@ -72,38 +93,25 @@ export default function FilterSidebar({
                 onClick={() =>
                   setSearch('')
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ba5b3] transition hover:text-[#18202d]"
                 aria-label="Clear search"
               >
                 <X
-                  size={14}
-                  strokeWidth={1.8}
+                  size={13}
                 />
               </button>
             )}
           </div>
         </div>
 
-        {/* GENRES */}
-        <div className="mt-8">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/30">
-              Genre
-            </p>
-
-            {hasFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="text-[10px] font-medium text-white/35 transition hover:text-white"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+        {/* GENRE */}
+        <div className="mt-7">
+          <p className="mb-3 text-[8px] font-bold uppercase tracking-[0.18em] text-[#9aa4b2]">
+            Genre
+          </p>
 
           <div className="space-y-1">
-            {filterOptions.map(
+            {genres.map(
               (option) => {
                 const active =
                   genre === option
@@ -115,10 +123,10 @@ export default function FilterSidebar({
                     onClick={() =>
                       setGenre(option)
                     }
-                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs font-medium transition ${
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[10px] font-semibold transition ${
                       active
-                        ? 'bg-white text-black'
-                        : 'text-white/45 hover:bg-white/[0.05] hover:text-white'
+                        ? 'bg-[#18202d] text-white shadow-[0_8px_20px_rgba(24,32,45,0.14)]'
+                        : 'text-[#788496] hover:bg-[#edf1f7] hover:text-[#253044]'
                     }`}
                   >
                     <span>
@@ -126,7 +134,7 @@ export default function FilterSidebar({
                     </span>
 
                     {active && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-black" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#c9c5ff]" />
                     )}
                   </button>
                 )
@@ -136,15 +144,15 @@ export default function FilterSidebar({
         </div>
 
         {/* DIVIDER */}
-        <div className="my-8 border-t border-white/[0.06]" />
+        <div className="my-6 border-t border-[#18202d]/[0.06]" />
 
         {/* TAGS */}
         <div>
-          <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/30">
+          <p className="mb-3 text-[8px] font-bold uppercase tracking-[0.18em] text-[#9aa4b2]">
             Popular tags
           </p>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => {
               const active =
                 search
@@ -163,10 +171,10 @@ export default function FilterSidebar({
                         : tag
                     )
                   }
-                  className={`rounded-full border px-3 py-1.5 text-[10px] font-medium transition ${
+                  className={`rounded-full border px-2.5 py-1.5 text-[8px] font-semibold transition ${
                     active
-                      ? 'border-white bg-white text-black'
-                      : 'border-white/[0.08] bg-white/[0.025] text-white/40 hover:border-white/20 hover:text-white'
+                      ? 'border-[#18202d] bg-[#18202d] text-white'
+                      : 'border-[#18202d]/[0.07] bg-[#f5f7fb]/70 text-[#8b96a6] hover:border-[#a7a3e4] hover:bg-[#ecebff] hover:text-[#565d80]'
                   }`}
                 >
                   {tag}

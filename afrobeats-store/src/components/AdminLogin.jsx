@@ -10,8 +10,7 @@ import {
   useState,
 } from 'react'
 
-const API_URL =
-  'http://localhost:5000'
+import { API_URL } from '../config/api'
 
 export default function AdminLogin({
   onLogin,
@@ -112,7 +111,7 @@ export default function AdminLogin({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#09090b] px-4 py-12 font-['Poppins'] text-white">
+    <main className="flex min-h-screen items-center justify-center bg-[#09090b] px-4 py-12 font-['Manrope'] text-white">
       <div className="w-full max-w-[420px]">
         {/* BRAND */}
         <div className="mb-10 text-center">

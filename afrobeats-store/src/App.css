@@ -17,6 +17,13 @@
   }
 }
 
+body {
+  margin: 0;
+  font-family: 'Manrope', sans-serif;
+  background: #eef3fb;
+  color: #18202d;
+}
+
 .hero {
   position: relative;
 

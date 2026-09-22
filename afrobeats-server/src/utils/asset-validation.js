@@ -15,6 +15,8 @@ const ALLOWED_MIME_TYPES = {
 
   [ASSET_TYPES.PREVIEW_MASTERED_TAGGED]: [
     'audio/mpeg',
+    'audio/wav',
+    'audio/mp3'
   ],
 
   [ASSET_TYPES.MP3_UNMASTERED]: [

@@ -3,6 +3,8 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 
+import logo from '../assets/emokkhor-logo.png'
+
 export default function Navbar({
   cartCount,
   onOpenCart,
@@ -11,63 +13,56 @@ export default function Navbar({
   onServices,
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#09090b]/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-[72px] max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 border-b border-[#172033]/[0.06] bg-[#f5f8fc]/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-[78px] max-w-[1500px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* LOGO */}
         <button
           type="button"
           onClick={onHome}
-          className="shrink-0"
-          aria-label="EMOKHRR home"
+          aria-label="EMOKKHOR home"
+          className="flex shrink-0 items-center"
         >
-          <span className="text-[17px] font-bold tracking-[0.16em] text-white sm:text-lg">
-            EMOKKHOR
-          </span>
+          <img
+            src={logo}
+            alt="EMOKKHOR"
+            className="h-[30px] w-auto object-contain mix-blend-multiply sm:h-[34px]"
+          />
         </button>
 
-        <nav className="hidden items-center gap-9 md:flex">
-          <button
-            type="button"
-            onClick={onHome}
-            className="text-[13px] font-medium text-white/45 transition hover:text-white"
-          >
+        {/* DESKTOP NAV */}
+        <nav className="hidden items-center gap-8 md:flex">
+          <NavButton onClick={onHome}>
             Home
-          </button>
+          </NavButton>
 
-          <button
-            type="button"
-            onClick={onBeats}
-            className="text-[13px] font-medium text-white/45 transition hover:text-white"
-          >
+          <NavButton onClick={onBeats}>
             Beats
-          </button>
+          </NavButton>
 
-          <button
-            type="button"
-            onClick={onServices}
-            className="text-[13px] font-medium text-white/45 transition hover:text-white"
-          >
+          <NavButton onClick={onServices}>
             Services
-          </button>
+          </NavButton>
         </nav>
 
-        <div className="flex items-center gap-1.5">
+        {/* ACTIONS */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onOpenCart}
-            className="relative flex h-10 items-center gap-2.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-white/70 transition hover:border-white/[0.14] hover:bg-white/[0.07] hover:text-white"
+            className="relative flex h-10 items-center gap-2.5 rounded-lg border border-[#172033]/15 bg-transparent px-4 text-[#18202d] transition hover:bg-white"
             aria-label={`Open cart with ${cartCount} items`}
           >
             <ShoppingBag
-              size={17}
+              size={15}
               strokeWidth={1.8}
             />
 
-            <span className="hidden text-xs font-medium sm:inline">
+            <span className="hidden text-[11px] font-semibold sm:inline">
               Cart
             </span>
 
             {cartCount > 0 && (
-              <span className="flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-white px-1.5 text-[9px] font-bold text-black">
+              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#18202d] px-1 text-[8px] font-bold text-white">
                 {cartCount > 99
                   ? '99+'
                   : cartCount}
@@ -77,16 +72,31 @@ export default function Navbar({
 
           <button
             type="button"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white/65 transition hover:bg-white/[0.06] hover:text-white md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-[#18202d] transition hover:bg-white md:hidden"
             aria-label="Open menu"
           >
             <Menu
-              size={20}
+              size={19}
               strokeWidth={1.8}
             />
           </button>
         </div>
       </div>
     </header>
+  )
+}
+
+function NavButton({
+  children,
+  onClick,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[11px] font-semibold text-[#536071] transition hover:text-[#151c28]"
+    >
+      {children}
+    </button>
   )
 }

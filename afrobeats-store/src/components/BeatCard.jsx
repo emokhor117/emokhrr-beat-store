@@ -14,58 +14,93 @@ export default function BeatCard({
   return (
     <article className="group">
       {/* ARTWORK */}
-      <div className="relative aspect-square overflow-hidden rounded-2xl bg-[#151518]">
+      <div className="relative aspect-square overflow-hidden rounded-[24px] bg-[#dde5ef] shadow-[0_14px_35px_rgba(39,53,76,0.08)]">
         <img
-          src={beat.image}
+          src={beat.image || beat.artworkUrl}
           alt={beat.title}
           className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.035]"
         />
 
-        {/* DARK HOVER OVERLAY */}
+        {/* OVERLAY */}
         <div
-          className={`absolute inset-0 transition duration-300 ${
+          className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-[#111827]/55 via-transparent to-transparent transition duration-300 ${
             isActive
-              ? 'bg-black/25'
-              : 'bg-black/0 group-hover:bg-black/35'
+              ? 'opacity-100'
+              : 'opacity-40 md:opacity-30 md:group-hover:opacity-100'
           }`}
         />
 
-        {/* PLAY BUTTON */}
+        {/* GENRE */}
+        {beat.genre && (
+          <div className="absolute left-3.5 top-3.5">
+            <span className="rounded-full border border-white/50 bg-white/80 px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#39475b] shadow-sm backdrop-blur-md">
+              {beat.genre}
+            </span>
+          </div>
+        )}
+
+        {/* PLAY */}
         <button
           type="button"
-          onClick={() => onTogglePlay(beat)}
+          onClick={() =>
+            onTogglePlay(beat)
+          }
           aria-label={
             isActive && isPlaying
               ? `Pause ${beat.title}`
               : `Play ${beat.title}`
           }
-          className={`absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-black shadow-2xl transition duration-200 ${
-            isActive
-              ? 'scale-100 opacity-100'
-              : 'scale-90 opacity-0 group-hover:scale-100 group-hover:opacity-100'
-          }`}
+          className={`
+            absolute left-1/2 top-1/2
+            flex h-14 w-14
+            -translate-x-1/2 -translate-y-1/2
+            items-center justify-center
+            rounded-full
+            bg-white
+            text-[#18202d]
+            shadow-[0_15px_35px_rgba(15,23,42,0.25)]
+            transition duration-200
+            active:scale-95
+
+            ${
+              isActive
+                ? 'scale-100 opacity-100'
+                : `
+                  scale-100 opacity-100
+                  md:scale-90 md:opacity-0
+                  md:group-hover:scale-100
+                  md:group-hover:opacity-100
+                `
+            }
+          `}
         >
           {isActive && isPlaying ? (
             <Pause
-              size={21}
+              size={20}
               strokeWidth={2}
             />
           ) : (
             <Play
-              size={21}
+              size={20}
               strokeWidth={2}
-              className="ml-0.5"
               fill="currentColor"
+              className="ml-0.5"
             />
           )}
         </button>
 
-        {/* ACTIVE INDICATOR */}
+        {/* PLAYING STATUS */}
         {isActive && (
-          <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 backdrop-blur-md">
-            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+          <div className="absolute bottom-3.5 left-3.5 flex items-center gap-2 rounded-full border border-white/20 bg-[#18202d]/80 px-3 py-1.5 text-white backdrop-blur-md">
+            <span className="relative flex h-1.5 w-1.5">
+              {isPlaying && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#c9c5ff] opacity-75" />
+              )}
 
-            <span className="text-[10px] font-medium text-white">
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#c9c5ff]" />
+            </span>
+
+            <span className="text-[8px] font-bold">
               {isPlaying
                 ? 'Playing'
                 : 'Paused'}
@@ -74,50 +109,60 @@ export default function BeatCard({
         )}
       </div>
 
-      {/* DETAILS */}
-      <div className="pt-4">
-        <div className="flex items-start justify-between gap-4">
+      {/* INFORMATION */}
+      <div className="px-1 pt-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-white">
+            <h3 className="truncate text-[15px] font-bold tracking-[-0.025em] text-[#18202d]">
               {beat.title}
             </h3>
 
-            <p className="mt-1 truncate text-[11px] font-medium text-white/35">
-              {beat.genre}
-              {' · '}
-              {beat.bpm} BPM
-              {' · '}
-              {beat.key}
+            <p className="mt-1.5 truncate text-[10px] font-semibold text-[#8b96a7]">
+              {[
+                beat.bpm
+                  ? `${beat.bpm} BPM`
+                  : null,
+                beat.key,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </p>
           </div>
 
-          {/* LICENSE / BUY */}
+          {/* LICENSE */}
           <button
             type="button"
-            onClick={() => onSelect(beat)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.09] bg-white/[0.05] px-3.5 py-2 text-[11px] font-semibold text-white transition duration-200 hover:border-white hover:bg-white hover:text-black"
+            onClick={() =>
+              onSelect(beat)
+            }
+            disabled={
+              beat.priceNGN == null
+            }
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#18202d]/10 bg-white/65 px-3 py-2 text-[9px] font-bold text-[#253044] shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#18202d] hover:bg-[#18202d] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ShoppingBag
-              size={13}
+              size={11}
               strokeWidth={2}
             />
 
-           {beat.priceNGN != null ? (
-  <span>
-    From ₦
-    {beat.priceNGN.toLocaleString(
-      'en-NG'
-    )}
-  </span>
-) : (
-  <span>Unavailable</span>
-)}
+            {beat.priceNGN != null ? (
+              <span>
+                ₦{' '}
+                {beat.priceNGN.toLocaleString(
+                  'en-NG'
+                )}
+              </span>
+            ) : (
+              <span>
+                Unavailable
+              </span>
+            )}
           </button>
         </div>
 
-        {/* OPTIONAL MOOD */}
+        {/* MOOD */}
         {beat.mood && (
-          <p className="mt-2 truncate text-[11px] text-white/25">
+          <p className="mt-2.5 truncate text-[9px] font-medium text-[#a0a9b7]">
             {beat.mood}
           </p>
         )}
